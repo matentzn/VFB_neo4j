@@ -2,18 +2,27 @@ from owl2pdm_tools import ont_manager
 from uk.ac.ebi.brain.core import Brain
 import requests
 import sys
+import json
+import re
+import time
 
 """Add typing via anonymous class expressions from OWL file.
-Requires short_form ID attribute on rels."""
+Requires uniqueness constraint on individual & class short_form_id."""
 
 base_uri = sys.argv[1]
 usr = sys.argv[2]
 pwd = sys.argv[3]
 
-vfb = Brain("/repos/VFB_owl/src/owl/fbbt_vfb_ind_prc_nr.owl")
+vfb = Brain()
+vfb.learn("/repos/VFB_owl/src/owl/fbbt_vfb_ind_prc_nr.owl")
 vom = ont_manager(vfb.getOntology())
 
-# vom.typeAxioms2pdm(sfid = 'VFB_00005000')
+def chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in xrange(0, len(l), n):
+        yield l[i:i+n]
+
+vom.typeAxioms2pdm(sfid = 'VFB_00005000')
 
 # example = [{'isAnonymous': False, 'objectId': u'FBbt_00100247'},
 #            {'relId': u'BFO_0000050', 'isAnonymous': True, 'objectId': u'FBbt_00003624'},
@@ -28,20 +37,26 @@ rels = requests.post(url = "%s/db/data/transaction/commit" % base_uri, auth = (u
 
 # Get all inds by query
 
-inds = vfb.getInstances("Thing", 0)
+inds = vfb.getInstances("Thing", 0) # Could grab from
+
+inds_chunked = chunks(l = inds, n = 100) # Chunks of 100, just 'cos
 
 # Iterate over individuals, looking up types and adding them
-
-for i in ind:
-    types = vom.typeAxioms2pdm(sfid = i)
-    for t in types:
-        if t['isAnonymous']:
-            statements.append({ 'statement': "MATCH (I:Individual), [r], (C:Class) " /
-                                "WHERE I.short_form = '%s' AND C.short_form = '%s' AND r.short_form = '%s' " /
-                                "CREATE (I)-[r]->(C)"
-                                 % (i, t['relId'], t['objectId']) # Need to do some testing of this.  Relation match may not make sense
-                                    payload = {'statements': statements}
+for chunk in inds_chunked:
+    statements = []
+    for i in chunk:
+        types = vom.typeAxioms2pdm(sfid = i)
+        for t in types:
+            if t['isAnonymous']:
+                rel = re.sub(' ', '_', vfb.getLabel(t['relId']))
+                # Using related link. Can denormalise with generic edge naming script.
+                s = "MATCH (I:Individual), (C:Class) WHERE I.short_form = '%s'" \
+                    "AND C.short_form = '%s' MERGE (I)-[r:Related {label: '%s' }]->(C)" \
+                    % (i, t['objectId'], rel) # 
+                statements.append({ 'statement': s }) 
+    payload = {'statements': statements}
     new_rel = requests.post(url = "%s/db/data/transaction/commit" % base_uri, auth = (usr, pwd) , data = json.dumps(payload))
+    time.sleep(0.01) # Add a brief pause to avoid hammering server too much.  Possibly not needed...
 
     
 # Inds from graph (probably don't need this)
@@ -49,6 +64,10 @@ for i in ind:
 # ind_q_res = requests.post(url = "%s/db/data/transaction/commit" % base_uri, auth = (usr, pwd) , data = json.dumps(payload))
 # rj= rels.json()
 # inds = rj['results'][0]['data']
+
+
+
+
 
 
 
