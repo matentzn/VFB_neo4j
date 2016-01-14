@@ -19,9 +19,13 @@ Individual: I1
 
 => 
 
+~~~~~~~.cql
+
 (Class { label : 'C1'}  ) -[Related {label : 'R'}]->(Class { label 'C2' } )
 (Class { label : 'C2'}  ) -[SUBCLASSOF]->(Class { label 'C3' } )
 (Individual { label : 'I1'}  ) -[INSTANCEOF]->(Class { label 'C1' } )
+
+~~~~~~~~
 
 Extension => more graphy expressiveness
 
@@ -34,9 +38,11 @@ Class: C4
 
 => 
 
+~~~~~~~.cql
 (Individual { label : 'I1'}  ) -[Related {label : 'R'}]->(Class { label 'C1' } ) #  This feels slightly hacky, but so does using INSTANCEOF with a varierty of edge labels as for Related.
 (Individual { label : 'I1'}  ) -[Related {label : 'R'}]->(Individual { label 'I2' } )  
 (Class { label : 'C4'}  ) -[Related {label : 'R'}]->(Individual { label 'I3' } )
+~~~~~~~~~
 
 Any more complex axioms are not stored in the graph.
 
@@ -47,7 +53,6 @@ The lack of edges named for relations causes a problem for querying:  It is not 
 This allows, for example, the following neuron location graphing generator:
 
 ~~~~~.cql
-
 
 MATCH (fu)-[r1:overlaps|has_synaptic_terminal_in|has_postsynaptic_terminal_in|has_presynaptic_terminal_in]
 ->(np:Class)-[r2:part_of*]->(np2:Synaptic_neuropil) 
