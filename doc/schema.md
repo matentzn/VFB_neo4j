@@ -27,7 +27,7 @@ Individual: I1
 
 ~~~~~~~~
 
-Extension => more graphy expressiveness
+Extensions to OLS representation:
 
 Individual: I1
    Type: R some C1 
@@ -39,18 +39,18 @@ Class: C4
 => 
 
 ~~~~~~~.cql
-(Individual { label : 'I1'}  ) -[Related {label : 'R'}]->(Class { label 'C1' } ) #  This feels slightly hacky, but so does using INSTANCEOF with a varierty of edge labels as for Related.
-(Individual { label : 'I1'}  ) -[Related {label : 'R'}]->(Individual { label 'I2' } )  
-(Class { label : 'C4'}  ) -[Related {label : 'R'}]->(Individual { label 'I3' } )
+(:Individual { label : 'I1'}  ) -[:Related {label : 'R'}]->(:Class { label 'C1' } )
+(:Individual { label : 'I1'}  ) -[:Related {label : 'R'}]->(:Individual { label 'I2' } )  
+(:Class { label : 'C4'}  ) -[:Related {label : 'R'}]->(Individual { label 'I3' } )
 ~~~~~~~~~
 
 Any more complex axioms are not stored in the graph.
 
-## Denormalisig the OLS graph for improved querying:
+## Denormalising the OLS graph for improved querying:
 
 The lack of edges named for relations causes a problem for querying:  It is not possible to specify a set of edges in a pattern match by their attributes.  To compensate for this, we run a script that duplicates all the 'related_to' edges - making named edges in their place.  
 
-This allows, for example, the following neuron location graphing generator:
+This allows, for example, the following neuron location graph generator:
 
 ~~~~~.cql
 
@@ -97,7 +97,6 @@ MATCH (a:class:anatomy)-[hr:has\_reference { type: def }] -> (p:pub) where p.sho
 Note - this means some denormalisation of synonym info:  if there are multiple references for a single synonym then the same synonym will live on multiple edges.  However the complexity of the synonym field means that it can't fit into the simple data types available in node attributes.  Adding synonyms as nodes in their own right would add needless complexity.
 
 
-
 ### Expression data
 
 ~~~~ .cql
@@ -118,3 +117,19 @@ Note - this means some denormalisation of synonym info:  if there are multiple r
 ~~~~~
 
 (Note - OWL inference will be used to fill in intermediate stages not recorded in FlyBase).
+
+### Anatomical Phenotype data
+
+(NEEDS WORK!)
+
+~~~~~~.cql
+
+(g:genotype { label: 'fu[1]/fu[2]')-[:has_part]->(:allele { label : 'fu[1]'})
+(g:genotype { label: 'fu[1]/fu[2]')-[:has_part]->(:allele { label : 'fu[2]'})
+
+(g)-[:phenotype\_expressed\_in { pub: 'FBrf...' }, description: 'ipsum lorerm...' ]->(ap:Class:Anatomy { label: 'lateral horn during adult stage' })
+(ap)-[:SubClassOf { label: 'lateral horn', short_form: 'FBbt_...' }
+(ap)-[:during { label: 'adult stage', short_form: 'FBdv_....' }]
+
+~~~~~~~~
+
