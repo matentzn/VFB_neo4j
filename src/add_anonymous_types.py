@@ -14,7 +14,7 @@ usr = sys.argv[2]
 pwd = sys.argv[3]
 
 vfb = Brain()
-vfb.learn("/repos/VFB_owl/src/owl/fbbt_vfb_ind_prc_nr.owl")
+vfb.learn("/repos/VFB_owl/src/owl/fbbt_vfb_ind_prc_nr.owl") # Make this non-local
 vom = ont_manager(vfb.getOntology())
 
 def chunks(l, n):

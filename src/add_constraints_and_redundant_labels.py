@@ -14,7 +14,7 @@ def commit_list(statements, base_uri, usr, pwd):
     for c in constraints:
         s.append({'statament': x})
     payload = {'statements': statements}
-    add_constraints = requests.post(url = "%s/db/data/transaction/commit" % base_uri, auth = (usr, pwd) , data = json.dumps(payload))
+    return requests.post(url = "%s/db/data/transaction/commit" % base_uri, auth = (usr, pwd) , data = json.dumps(payload))
 
     
 constraints = ['CREATE CONSTRAINT ON (c:Class) ASSERT c.short_form IS UNIQUE',
@@ -30,7 +30,7 @@ commit_list(constraints, base_uri, usr, pwd)
 label_types = {
    'Neuron': 'neuron',
    'Tract': 'synaptic neuropil tract',
-   'Synaptic_neuropil': 'synaptic neuropil'
+   'Synaptic_neuropil': 'synaptic neuropil',
    'Clone': 'neuroblast lineage clone'
    }
 
