@@ -46,6 +46,8 @@ Class: C4
 
 Any more complex axioms are not stored in the graph.
 
+All labels/shortForm IDs on Related edges corrspond to a Property node.
+
 ## Denormalising the OLS graph for improved querying:
 
 The lack of edges named for relations causes a problem for querying:  It is not possible to specify a set of edges in a pattern match by their attributes.  To compensate for this, we run a script that duplicates all the 'related_to' edges - making named edges in their place.  
