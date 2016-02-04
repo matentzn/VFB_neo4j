@@ -1,24 +1,24 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import re
-from neo4j_tools import commit_list, commit_list_in_chunks
+from ..tools import commit_list, commit_list_in_chunks
 
 """A simple script to make edges named (typed) for relations from all edges of of type :Related.
 Arg1 = base_uri or neo4J server
 Arg2 = usr
 Arg2 = pwd
 
-This script relies on a uniqueness constraint being in place for OBO ids."""
+This script relies on a uniqueness constraint being in place for OBO ids.
+
+Created on 4 Feb 2016
+
+@author: davidos"""
 
 # Current version makes all edges.  Might want to limit the types of edges made to those needed for graphing purposes.
 
 # TODO: add in check of uniqueness constraint
 # Use REST calls to /db/data/schema/
-
-# TODO: Add checks for sucess of query
-## Is return code = 200?  If not, fail and return code
-## Does the json indicate an error?  If so, fail and return error message
 
 base_uri = sys.argv[1]
 usr = sys.argv[2]

@@ -1,7 +1,7 @@
- #!/usr/bin/env python
+ #!/usr/bin/env python3
 import requests
 import sys
-import json
+from ..tools import commit_list
 
 base_uri = sys.argv[1]
 usr = sys.argv[2]
@@ -10,14 +10,7 @@ pwd = sys.argv[3]
 
 ## Add constraints
 
-def commit_list(statements, base_uri, usr, pwd):
-    s=[]
-    for c in constraints:
-        s.append({'statament': c})
-    payload = {'statements': statements}
-    return requests.post(url = "%s/db/data/transaction/commit" % base_uri, auth = (usr, pwd) , data = json.dumps(payload))
 
-    
 constraints = ['CREATE CONSTRAINT ON (c:Class) ASSERT c.short_form IS UNIQUE',
                    'CREATE CONSTRAINT ON (c:Individual) ASSERT c.short_form IS UNIQUE']
 

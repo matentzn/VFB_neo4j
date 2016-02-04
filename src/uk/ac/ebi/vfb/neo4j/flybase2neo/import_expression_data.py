@@ -1,6 +1,18 @@
+'''
+Import Expression data from FlyBase.
+Prerequisites:  
+ * Complete FBdv, FBbt & VFB KB must be loaded 
+ * Edges named for relations
+ * Uniqueness constraints on short_form ids should be in place.
+
+Created on 4 Feb 2016
+@author: davidos
+'''
+from .dbtools import get_fb_conn, dict_cursor
+from ..tools import neo4j_connect, chunks
+
 # Phase 1 - generate
-import psycopg2
-from neo4j_tools import commit_list, chunks
+
 
 ### Spec:  Need to flesh out ontological status: class vs ind.
 # https://github.com/VirtualFlyBrain/VFB_neo4j/issues/2
@@ -14,14 +26,13 @@ from neo4j_tools import commit_list, chunks
 # (sr)-[start]->(:stage { label: 'stage x', short_form: 'FBdv_12345678' }
 # (sr)-[end]->(:stage { label: 'stage y', short_form: 'FBdv_22345678' }
 
-# Stragegy
+# Strategy
 ## Phase 1: Add all classes transgenes/genes for which we have expression data
 ## Phase 2: Add all expression statements (relying on FBex as unique identifier)
 ## Phase 3: Link transgenes to expression statement nodes via expression pattern nodes & occurs in edges, adding pubs.
 ## Phase 4: Link individuals to expression pattern classes.
 
-c = psycopg2.connect(dbname = 'flybase', host ='chado.flybase.org', user = 'flybase')
-
+c = get_fb_conn()
 cursor=c.cursor()
 
 ## Phase 1: Add nodes for all transgenes/genes for which we have expression data
@@ -57,7 +68,9 @@ cursor.execute("SELECT DISTINCT tgtyp.name as tg_type, obj2.feature_id as transg
 # Or include extra node?  This makes it easier to code to, but adds extra complexity to queries.
 
 statements = []
-chunked_statements = 
+
+dc = dict_cursor()
+
 for d in dc:
     ### Better to have general classes for TG, mRNA?
     ### Needs to be chunked
@@ -67,28 +80,33 @@ for d in dc:
     "MERGE (ep:Class:ExpressionPattern { name: 'expression pattern of %s' }) " \
     "MERGE (ep)-[:SubClassof]->(Class:ExpressionPattern { short_form: 'VFB_') " \
     "MERGE (ep)-[:expresses]->(gp)" \
-    "MERGE (gp)-[:produced_by]->(tg) " \
-    % ( d['tg_type'], d['transgene_name'), d['transgene_uniquename'], base_uri + d['transgene_uniquename'])
-    d['gp_type']), d['gp_name'], d['gp_uname'], base_uri + d['gp_uname']))
+    "MERGE (gp)-[:produced_by]->(tg) " %
+     (d['tg_type'], d['transgene_name'], d['transgene_uniquename'], base_uri + d['transgene_uniquename'],
+       d['gp_type']), d['gp_name'], d['gp_uname'], base_uri + d['gp_uname'])
 
 
- --- # Ditto for expressed genes
+chunked_statements = chunks(l = statements, n=100)
+for c in chunked_statements: 
+    commit_list(c)
+    
+# Ditto for expressed genes
 
 
- # Phase 2 - Add expression statements
+# Phase 2 - Add expression statements
 
-"SELECT c.name as cvt, db.name as cvt_db, dbx.accession as cvt_acc, ec.rank as ec_rank, 
-t1.name as ec_type, ectp.value as ectp_value, 
-t2.name as ectp_name, ectp.rank as ectp_rank,
-e.uniquename as fbex
-FROM expression_cvterm ec
-JOIN expression e on ec.expression_id=e.expression_id
-LEFT OUTER JOIN expression_cvtermprop ectp on ec.expression_cvterm_id=ectp.expression_cvterm_id 
-JOIN cvterm c on ec.cvterm_id=c.cvterm_id 
-JOIN dbxref dbx ON (dbx.dbxref_id = c.dbxref_id)
-JOIN db ON (dbx.db_id=db.db_id)
-JOIN cvterm t1 on ec.cvterm_type_id=t1.cvterm_id 
-LEFT OUTER JOIN cvterm t2 on ectp.type_id=t2.cvterm_id"
+statements = []
+statements.append("SELECT c.name as cvt, db.name as cvt_db, dbx.accession as cvt_acc, ec.rank as ec_rank, " \
+                 "t1.name as ec_type, ectp.value as ectp_value, " \
+                 "t2.name as ectp_name, ectp.rank as ectp_rank, " \
+                 "e.uniquename as fbex " \
+                 "FROM expression_cvterm ec " \
+                 "JOIN expression e on ec.expression_id=e.expression_id " \
+                 "LEFT OUTER JOIN expression_cvtermprop ectp on ec.expression_cvterm_id=ectp.expression_cvterm_id  " \
+                 "JOIN cvterm c on ec.cvterm_id=c.cvterm_id  " \
+                 "JOIN dbxref dbx ON (dbx.dbxref_id = c.dbxref_id) " \
+                 "JOIN db ON (dbx.db_id=db.db_id) " \
+                 "JOIN cvterm t1 on ec.cvterm_type_id=t1.cvterm_id  " \
+                 "LEFT OUTER JOIN cvterm t2 on ectp.type_id=t2.cvterm_id"
 
 
 #         cvt         |      cvt_db      |                cvt_acc                 | ec_rank | ec_type | ectp_value | ectp_name | ectp_rank |    fbex     
