@@ -1,6 +1,4 @@
 import sys
-import json
-
 from .dbtools import dict_cursor, get_fb_conn
 from ..tools import neo4j_connect
 
@@ -10,8 +8,7 @@ pwd = sys.argv[3]
 
 nc = neo4j_connect(base_uri, usr, pwd)
 statements = ['MATCH (pub) RETURN DISTINCT pub.FLYBASE']
-pub_list_results = nc.
-requests.post(url = "%s/db/data/transaction/commit" % base_uri, auth = (usr, pwd) , data = json.dumps(payload))
+pub_list_results = nc.commit_list(statements)
 pub_list = [] # Parsing returned Json for results.
 
 c = get_fb_conn()
@@ -24,8 +21,7 @@ cursor=c.cursor()
 # Will be slow to iterate over pub list and make separate queries for each.  Better to use IN CLAUSE?  Could chunk first.
 
 def set_pub_att(k,v):
-        statements.append("MATCH (p:pub) WHERE pub.FLYBASE = '%s' " \
-                          
+        statements.append("MATCH (p:pub) WHERE pub.FLYBASE = '%s' ")
 
 
 for c in pub_list:
@@ -54,15 +50,15 @@ for c in pub_list:
         for d in dc: 
             if d['name'] == 'pubmed':
                 statements.append("MATCH (p:pub) WHERE pub.FLYBASE = '%s' " \
-                          "SET p.PMID = '%s'" % (d['acc'])
+                          "SET p.PMID = '%s'" % (d['acc']))
             if d['name'] == 'PMCID':
                 statements.append("MATCH (p:pub) WHERE pub.FLYBASE = '%s' " \
-                          "SET p.PMID = '%s'" % (d['acc'])
+                          "SET p.PMID = '%s'" % (d['acc']))
             if d['name'] == 'pubmed':
                 statements.append("MATCH (p:pub) WHERE pub.FLYBASE = '%s' " \
-                          "SET p.PMID = '%s'" % (d['acc'])
+                          "SET p.PMID = '%s'" % (d['acc']))
             if d['name'] == 'pubmed':
                 statements.append("MATCH (p:pub) WHERE pub.FLYBASE = '%s' " \
-                          "SET p.PMID = '%s'" % (d['acc'])
+                          "SET p.PMID = '%s'" % (d['acc']))
         
-        commit_list_in_chunks(cypher_statments, base_uri, usr, pwd
+        nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 1000)

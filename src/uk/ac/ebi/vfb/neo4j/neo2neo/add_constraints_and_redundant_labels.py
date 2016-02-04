@@ -1,7 +1,6 @@
  #!/usr/bin/env python3
-import requests
 import sys
-from ..tools import commit_list
+from ..tools import neo4j_connect
 
 base_uri = sys.argv[1]
 usr = sys.argv[2]
@@ -14,7 +13,8 @@ pwd = sys.argv[3]
 constraints = ['CREATE CONSTRAINT ON (c:Class) ASSERT c.short_form IS UNIQUE',
                    'CREATE CONSTRAINT ON (c:Individual) ASSERT c.short_form IS UNIQUE']
 
-commit_list(constraints, base_uri, usr, pwd)
+nc = neo4j_connect(base_uri, usr, pwd)
+nc(constraints)
 
 
 ## Denormalise - adding labels for major categories:
@@ -32,5 +32,5 @@ label_additions = []
 for l,t in label_types.items():
     label_additions.append("MATCH (n:Class)-[r:SUBCLASSOF*]->(n2:Class) WHERE n2.label = '%s' SET n:%s" % (l, t))
 
-commit_list(label_additions, base_uri, usr, pwd)
+nc(label_additions)
 
