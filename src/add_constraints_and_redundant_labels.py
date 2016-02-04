@@ -1,6 +1,7 @@
  #!/usr/bin/env python
 import requests
 import sys
+import json
 
 base_uri = sys.argv[1]
 usr = sys.argv[2]
@@ -10,9 +11,9 @@ pwd = sys.argv[3]
 ## Add constraints
 
 def commit_list(statements, base_uri, usr, pwd):
-    statements=[]
+    s=[]
     for c in constraints:
-        s.append({'statament': x})
+        s.append({'statament': c})
     payload = {'statements': statements}
     return requests.post(url = "%s/db/data/transaction/commit" % base_uri, auth = (usr, pwd) , data = json.dumps(payload))
 
@@ -35,8 +36,8 @@ label_types = {
    }
 
 label_additions = []
-for l,t in label_type.items():
-   label_additions.append("MATCH (n:Class)-[r:SUBCLASSOF*]->(n2:Class) WHERE n2.label = '%s' SET n:%s" % (l, t))
+for l,t in label_types.items():
+    label_additions.append("MATCH (n:Class)-[r:SUBCLASSOF*]->(n2:Class) WHERE n2.label = '%s' SET n:%s" % (l, t))
 
 commit_list(label_additions, base_uri, usr, pwd)
 

@@ -19,7 +19,6 @@ usr = sys.argv[2]
 pwd = sys.argv[3]
 ontology_uri = sys.argv[4]
 
-
 def proc_xrefs(dbxrefs):
     out = []
     if not dbxrefs:
