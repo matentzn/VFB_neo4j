@@ -2,6 +2,7 @@
 
 directory structure
 
+~~~~~~~~~~
   build-neo4j-index.sh
   build-solr-index.sh
   config/
@@ -10,4 +11,4 @@ directory structure
       ...
   OLS-master/
       <checkout of OLS code>
-  
+~~~~~~~~~~~ 
