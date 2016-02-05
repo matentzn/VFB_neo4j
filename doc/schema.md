@@ -118,7 +118,7 @@ Note - this means some denormalisation of synonym info:  if there are multiple r
 ...
 ~~~~~
 
-(Note - OWL inference will be used to fill in intermediate stages not recorded in FlyBase).
+(Note - a cypher query can be used to fill in intermediate stages not recorded in FlyBase).
 
 ### Anatomical Phenotype data
 
