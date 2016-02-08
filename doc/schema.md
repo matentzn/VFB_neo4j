@@ -102,23 +102,25 @@ Note - this means some denormalisation of synonym info:  if there are multiple r
 ### Expression data
 
 ~~~~ .cql
-(ep:expression pattern { label :  "expression pattern of X", short_form  : "VFB…." }) 
-
-(ep)-[:instanceOf]->(:Individual:Anatomy: { short_form : "VFB\_1234567" })
-
-(ep)-[expresses]->(:genetic\_feature {  label : 'p{X}', short\_form : "FBbi..." })
-
-(ep)-[:overlaps { short\_form : 'RO\_…',  pubs: ["FBrf12343567"]}]
-->(as:Class:Anatomy { "label" :  'lateral horn  - from S-x to S-y', short_form : 'FBex...', assay: ''})
-
-(as)-[SubClassOf]->(:Anatomy { label:  'lateral horn', short\_form: "FBbt_...." })
-
-(sr)-[during]->(:stage { label: 'stage x', short\_form: 'FBdv_12345678' }
-(sr)-[during]->(:stage { label: 'stage y', short\_form: 'FBdv_22345678' }
-...
+CREATE (ep:Class:Expression_pattern { label:  "expression pattern of P{GMR10A06-GAL4}" }),
+(ep)-[:SUBCLASSOF]->(:Class { label: 'expression pattern' }),
+(ep)-[:expresses]->(:Class { label: 'P{GMR10A06-GAL4}' }),
+(ep)<-[:INSTANCEOF]-(iep:Individual { label: 'GMR_10A06_AE_01_08-fA01b' }),
+(ep)-[:overlaps { pubs: ['FBrf12343567']}]->(as1:Class { label:  'lateral horn - S1 to S3'}),
+(as1)-[:SUBCLASSOF]->(:Class { label:  'lateral horn' }),
+(as1)-[:exists_during]->(s1:Class { label: 'stage S1' }),
+(as1)-[:exists_during]->(s2:Class { label: 'stage S2' }),
+(as1)-[:exists_during]->(s3:Class { label: 'stage S3' }),
+(sc:Individual:VFB { label: 'GMR_10A06_AE_01_08-fA01b image channel'} )-[:depicts]->(iep),
+(i:Individual:VFB { short_form: 'VFBi_1234567' })-[:has_signal_channel]->(sc),
+(i)-[:has_background_channel]->(bc:Individual { label: 'JFRC2010 image channel' }),
+(bc)-[:depicts]->(ri:Individual { label: 'JFRC 2010' }),
+(ri)-[:INSTANCEOF]->(ab:Class { label: 'adult brain'})
 ~~~~~
 
 (Note - a cypher query can be used to fill in intermediate stages not recorded in FlyBase).
+
+See this [graphGist](http://portal.graphgist.org/graph_gists/1cead583-7fdf-4f4d-95c8-07b828168b8c)
 
 ### Anatomical Phenotype data
 
