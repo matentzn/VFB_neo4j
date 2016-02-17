@@ -1,64 +1,79 @@
 import sys
-from .dbtools import dict_cursor, get_fb_conn
-from ..tools import neo4j_connect
+from uk.ac.ebi.vfb.neo4j.flybase2neo.dbtools import dict_cursor, get_fb_conn
+from uk.ac.ebi.vfb.neo4j.tools import neo4j_connect
+import re
+
+"""Populate pub data.  Should be run as a final step, once all content added."""
+
+## TODO: Add microrefs - for more compact views (P1)
+## TODO: Add pub types (P2)
+## TODO: Add authors (P3)
+## TODO: Add pub relationships (P3)
 
 base_uri = sys.argv[1]
 usr = sys.argv[2]
 pwd = sys.argv[3]
 
 nc = neo4j_connect(base_uri, usr, pwd)
-statements = ['MATCH (pub) RETURN DISTINCT pub.FLYBASE']
+
+# Pull all pub FBrfs from graph
+statements = ['MATCH (pub) RETURN DISTINCT pub.FlyBase']
 pub_list_results = nc.commit_list(statements)
-pub_list = [] # Parsing returned Json for results.
+pub_list = [x['row'][0] for x in pub_list_results[0]['data']] # Parsing returned Json for results.
 
 c = get_fb_conn()
 cursor=c.cursor()
 
-# Query DB for all pubs.
+def gen_micro_ref_from_miniref(miniref):
+    # Use regex to truncate after year, remove brackets.
+    
+    return
 
-# Get basic attributes
+def gen_micro_ref_from_db():
+    # Use author list + year.  
+    # if > 2 authors, use et al
+    return
 
-# Will be slow to iterate over pub list and make separate queries for each.  Better to use IN CLAUSE?  Could chunk first.
+statements = []    
+    # Pull basic pub data
+cursor.execute("SELECT pub.title, pub.miniref, pub.pyear, pub.pages, " \
+            "pub.volume, typ.name, pub.uniquename as fbrf " \
+            "FROM pub JOIN cvterm typ on typ.cvterm_id = pub.type_id " \
+            "WHERE pub.uniquename = ANY(%s)", (pub_list,))  # TODO - test whether cast to list works here
 
-def set_pub_att(k,v):
-        statements.append("MATCH (p:pub) WHERE pub.FLYBASE = '%s' ")
+    
+dc = dict_cursor(cursor)
+for d in dc:
+    statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' " \
+                      "SET p.title = \"%s\", p.miniref = \"%s\", " \
+                      "p.volume = '%s', p.year = '%s', p.pages = '%s'" \
+                      % (d['fbrf'], re.sub('"', "\\'", d['title']), d['miniref'], d['volume'], d['pyear'], d['pages']))
+    # Note on quoting: Double quotes safer for longer text which may have single quotes internally
+    # Titles occasionally have double quotes in.  These are escaped via re.sub  
 
-
-for c in pub_list:
-    cursor.execute("SELECT pub.title, pub.miniref, pub.pyear, pub.pages, " \
-                    "pub.volume, type.name, pub.uniquename as fbrf " \
-                    "FROM pub JOIN cvterm typ on typ.cvterm_id = pub.type_id " \
-                    "WHERE fbrf = %s", c)
-
-    dc = dict_cursor(cursor)
-    statements = []
-    for d in dc:
-        statements.append("MATCH (p:pub) WHERE pub.FLYBASE = '%s' " \
-                          "SET p.title = '%s', p.miniref = '%s', " \
-                          "p.volume = '%s', p.year = '%s', " \
-                          "p.pages" % (d['fbrf'], d['title'], d['miniref'], d['volume'], d['year'], d['pages']))
+cursor.execute("SELECT pub.uniquename as fbrf, db.name AS db_name, dbx.accession AS acc FROM pub " \
+               "JOIN pub_dbxref pdbx on pdbx.pub_id=pub.pub_id " \
+               "JOIN dbxref dbx on pdbx.dbxref_id=dbx.dbxref_id " \
+               "JOIN db on dbx.db_id=db.db_id " \
+               "WHERE pub.uniquename = ANY(%s)", (pub_list,)) 
+    
+for d in dict_cursor(cursor): 
+    if d['db_name'] == 'pubmed':
+        statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' " \
+                  "SET p.PMID = '%s'" % (d['fbrf'],d['acc']))
+    if d['db_name'] == 'PMCID':
+        statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' " \
+                  "SET p.PMCID = '%s'" % (d['fbrf'],d['acc']))
+    if d['db_name'] == 'ISBN':
+        statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' " \
+                  "SET p.PMID = '%s'" % (d['fbrf'],d['acc']))
+    if d['db_name'] == 'DOI':
+        statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' " \
+                  "SET p.DOI = '%s'" % (d['fbrf'],d['acc']))
+            
         
-
-        cursor.execute("SELECT db.name AS db_name, dbx.accession AS acc FROM pub " \
-                        "JOIN pub_dbxref pdbx on pdbx.pub_id=pub.pub_id" \
-                        "JOIN dbxref dbx on pdbx.dbxref_id=dbx.dbxref_id " \
-                        "JOIN db on dbx.db_id=db.db_id " \
-                        "WHERE pub.uniquename= '%s'", c) 
-        
-        dc = dict_cursor(cursor)
-        
-        for d in dc: 
-            if d['name'] == 'pubmed':
-                statements.append("MATCH (p:pub) WHERE pub.FLYBASE = '%s' " \
-                          "SET p.PMID = '%s'" % (d['acc']))
-            if d['name'] == 'PMCID':
-                statements.append("MATCH (p:pub) WHERE pub.FLYBASE = '%s' " \
-                          "SET p.PMID = '%s'" % (d['acc']))
-            if d['name'] == 'pubmed':
-                statements.append("MATCH (p:pub) WHERE pub.FLYBASE = '%s' " \
-                          "SET p.PMID = '%s'" % (d['acc']))
-            if d['name'] == 'pubmed':
-                statements.append("MATCH (p:pub) WHERE pub.FLYBASE = '%s' " \
-                          "SET p.PMID = '%s'" % (d['acc']))
-        
-        nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 1000)
+nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 1000)
+c.close()
+# Ways to extend:  
+##  Add authors
+##  Add pub relationships, pub types... (via FBcv typing)
