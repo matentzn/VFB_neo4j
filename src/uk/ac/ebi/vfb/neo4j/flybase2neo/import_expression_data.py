@@ -11,35 +11,58 @@ Created on 4 Feb 2016
 
 from .dbtools import get_fb_conn, dict_cursor
 from ..tools import neo4j_connect, chunks
-from uk.ac.ebi.vfb.neo4j.tools import neo4j_connect
 import sys
+from dict_cursor import dict_cursor
 
-# Phase 1 - generate
 
+def expand_stage_range(nc, start, end):
+    """nc = neo4j_connect object
+    start = start stage (short_form_id string)
+    end = end stage (short_form_id string)
+    Returns list of intermediate stages.
+    """
+    stages = [start, end]
+    statements = ["MATCH p=shortestPath((s:FBDV)<-[:immediately_preceded_by*]-(e:FBDV)) WHERE s.label = '%s' AND e.label = '%s' RETURN extract(x IN nodes(p) | x.short_form)" % (start, end)]
+    r = nc.commit_list(statements)
+    stages.append(r[0]['data'][0]['row'][0]) 
+    return stages
+    
 
-### Spec:  Need to flesh out ontological status: class vs ind.
-# https://github.com/VirtualFlyBrain/VFB_neo4j/issues/2
-# (ep:expression_pattern:Class { label :  "expression pattern of X", short_form  : "VFB…." }) 
-# (ep)<-[:instanceOf]-(:Individual:Anatomy: { short_form : "VFB_1234567" })
-# (ep)-[expresses]->(:genetic_feature {  label : 'p{X}', short_form : "FBbi..." })
-# (ep)-[:overlaps { short_form : 'RO_…',  pubs: ["FBrf12343567"]}]
-# ->(as:Class:Anatomy { "label" :  'lateral horn  - from S-x to S-y', short_form : 'FBex...', assay: ''})
-# (as)-[SubClassOf]->(:Anatomy { label:  'lateral horn', short_form: "FBbt_...." })
-# (as)-[during]->(sr:stage { label: 'stage x to y'} )
-# (sr)-[start]->(:stage { label: 'stage x', short_form: 'FBdv_12345678' }
-# (sr)-[end]->(:stage { label: 'stage y', short_form: 'FBdv_22345678' }
+### Spec: http://portal.graphgist.org/graph_gists/1cead583-7fdf-4f4d-95c8-07b828168b8c
+
+# CREATE (ep:Class:Expression_pattern { label:  "expression pattern of P{GMR10A06-GAL4}" }),
+#(ep)-[:SUBCLASSOF]->(:Class { label: 'expression pattern' }),
+#(ep)-[:expresses]->(:Class { label: 'P{GMR10A06-GAL4}' }),
+#(ep)<-[:INSTANCEOF]-(iep:Individual { label: 'GMR_10A06_AE_01_08-fA01b' }),
+#(ep)-[:overlaps { pubs: ['FBrf12343567']}]->(as1:Class { label:  'lateral horn - S1 to S3'}),
+#(as1)-[:SUBCLASSOF]->(:Class { label:  'lateral horn' }),
+#(as1)-[:exists_during]->(s1:Class { label: 'stage S1' }),
+#(as1)-[:exists_during]->(s2:Class { label: 'stage S2' }),
+#(as1)-[:exists_during]->(s3:Class { label: 'stage S3' }),
+#(sc:Individual:VFB { label: 'GMR_10A06_AE_01_08-fA01b image channel'} )-[:depicts]->(iep),
+#(i:Individual:VFB { short_form: 'VFBi_1234567' })-[:has_signal_channel]->(sc),
+#(i)-[:has_background_channel]->(bc:Individual { label: 'JFRC2010 image channel' }),
+#(bc)-[:depicts]->(ri:Individual { label: 'JFRC 2010' }),
+#(ri)-[:INSTANCEOF]->(ab:Class { label: 'adult brain'})
+
+## NOTE: This glosses over gene product nodes - missing important information about whether gene or transgene expressed!
+## Consider adding this back, but will need to settle on correct relationships to do so.
 
 # Strategy
-## Phase 1: Add all classes transgenes/genes for which we have expression data
+## Phase 1a: Add all classes transgenes/genes for which we have expression data
+## Phase 1b: Link individuals to expression pattern classes 
 ## Phase 2: Add all expression statements (relying on FBex as unique identifier)
 ## Phase 3: Link transgenes to expression statement nodes via expression pattern nodes & occurs in edges, adding pubs.
-## Phase 4: Link individuals to expression pattern classes.
+#### MATCH (ep:Class { label: 'Expression pattern' })<-[:InstanceOf]-(n:Individual)
+#### -[:expresses]->(:Class { short_form: 'FBbi1234567' } )  RETURN  ep
 
 c = get_fb_conn()
 cursor=c.cursor()
-nc = neo4j_connect(sys.argv[1], sys.argv[2], sys.argv[3])
+nc = neo4j_connect(base_uri=sys.argv[1], usr=sys.argv[2], pwd=sys.argv[3])
+
 
 ## Phase 1: Add nodes for all transgenes/genes for which we have expression data
+### Note: 
 
 cursor.execute("SELECT DISTINCT tgtyp.name as tg_type, obj2.feature_id as transgene_feature_id, obj2.name as transgene_name, " \
                "obj2.uniquename as transgene_uniquename, stype.name as gp_type,  " \
@@ -72,29 +95,45 @@ cursor.execute("SELECT DISTINCT tgtyp.name as tg_type, obj2.feature_id as transg
 # Or include extra node?  This makes it easier to code to, but adds extra complexity to queries.
 
 statements = []
-dc = dict_cursor(cursor)
 
 ### Better to have general classes for TG, mRNA?
-### Needs to be chunked
 
-fb_base_uri = 'http://www.flybase.org/'
+fb_base_uri = 'http://www.flybase.org/reports/'
 
-for d in dc:
-    statements.append( 
-    "MERGE (tg:Transgene:%s { name: '%s', short_form: '%s', uri: '%s' }) " \
-    "MERGE (gp:GeneProduct:%s { name: '%s', short_form: '%s') " \
-    "MERGE (ep:Class:ExpressionPattern { name: 'expression pattern of %s' }) " \
-    "MERGE (ep)-[:SubClassof]->(Class:ExpressionPattern { short_form: 'VFB_') " \
-    "MERGE (ep)-[:expresses]->(gp)" \
-    "MERGE (gp)-[:produced_by]->(tg) " %
-    (d['tg_type'], d['transgene_name'], d['transgene_uniquename'], fb_base_uri + d['transgene_uniquename'],
+# A dict to map from FB to more sensible classifications in SO.  Also consistent with current fb_feature generation.
+def map_tg_type(name):
+    map = { 'transgenic_transposon': 'SO_0000796', 'insertion_site': 'SO_0001218', 
+     'transposable_element_insertion_site': 'SO_0001218', 'natural_transposon_isolate_named': 'SO_0000797'} 
+    if name in map.keys():
+        return map['name']
+    else:
+        return 'SO_0000110' # Sequence feature
+
+# Iterate over expressed transgenes: adding nodes for each TG + expression pattern, and hooking these up to individuals
+for d in dict_cursor(cursor):
+    
+    # How to specify to CREATE new ep class unless one exists.  Need to make this sufficient to merge in fb features coming from OWL (!):
+    
+    # Currently using uniqueness constraint on :VFB.  Should probably switch to one for FB features - perhaps based on SO.
+    
+    # Not adding name.  This should be added later as a job that populates features
+    statements.append(
+    "MERGE (tg:Class:VFB: { short_form: '%s'})-[:SUBCLASSOF]->(:VFB { short_form: '%s' }), "
+    "MERGE (cep:Class:ExpressionPattern { name: 'expression pattern of %s' }), " \
+    "MERGE (cep)-[:SUBCLASSOF]->(epg:VFB:Class { short_form: 'CARO_0030002'), " \
+    "MERGE (cep)-[:expresses]->(tg)," %
+    (d['transgene_uniquename'], map_tg_type(d['tg_type']), fb_base_uri + d['transgene_uniquename'],
      d['gp_type'], d['gp_name'], d['gp_uname'], fb_base_uri + d['gp_uname']))
 
+    statements.append("MATCH (gep:Class { label: 'Expression pattern' })<-[:InstanceOf]-(iep:Individual)" \
+                      "-[:expresses]->(tg:Class { short_form: '%s' })<-[:expresses]-(cep:Class)" \
+                      "MERGE (iep)-[:INSTANCEOF]->(cep)")
 
-nc.commit_list_in_chunks(statements, )
+nc.commit_list_in_chunks(statements)
     
 # Ditto for expressed genes
 
+# Could actually add in individuals at this point.
 
 # Phase 2 - Add expression statements.  Need to make sure these merge to nodes loaded into KB.
 
@@ -136,19 +175,24 @@ cursor.execute("SELECT c.name as cvt, db.name as cvt_db, dbx.accession as cvt_ac
 # (sr)-[start]->(:stage { label: 'stage x', short_form: 'FBdv_12345678' }
 # (sr)-[end]->(:stage { label: 'stage y', short_form: 'FBdv_22345678' }
 
-
-
+fbex_dict = {}
 statements = []
-statements.append("MERGE (x:Class:?? { short_form = '%s' } )  % d['fbex']")
+
+## Need to be able to operate on each FBex independently
+for d in dict_cursor(cursor):
+    fbex_dict[d'FBex']i
+    statements.append("MERGE (x:Class { short_form = '%s' } )  % d['fbex']")
+
+# Now need a loop structure that stays on 
 
 if d['cvt_db'] == 'FBbt':
-    statements.append("MATCH (a:Class:Anatomy { short_form: '%s_%s' } ) MERGE (x:Class:?? { short_form = '%s' } ) MERGE (x)-[:SUBCLASSOF]-(a)"  %
+    statements.append("MATCH (a:Class:Anatomy { short_form: '%s_%s' } ) MERGE (x:Class: { short_form = '%s' } ) MERGE (x)-[:SUBCLASSOF]-(a)"  %
                       (d['cvt_db'], d['cvt_acc'], d['fbex']))
 if d['cvt_db'] == 'FBdv' and not d['extp_value']:
-        statements.append("MATCH (d:Class:Stage { short_form: '%s_%s' } ) MERGE (x:Class:?? { short_form = '%s' } ) MERGE (x)-[:during]-(d)"  %
+        statements.append("MATCH (d:Class:Stage { short_form: '%s_%s' } ) MERGE (x:Class: { short_form = '%s' } ) MERGE (x)-[:during]-(d)"  %
                       (d['cvt_db'], d['cvt_acc'], d['fbex']))
 
-        # Expansion of stage annotation requires reasoner.  Ignore on first pass?  Or could this be done with a neo4J query?
+        # Expansion of stage annotation can be done with a neo4J query.
 
 
 # Phase 3 - linking expression to features
@@ -160,15 +204,15 @@ cursor.execute("SELECT f.name as fname, f.uniquename as funame, e.uniquename as 
 "JOIN expression e on (e.expression_id = fe.expression_id) " \
 "JOIN pub ON (pub.pub_id=fe.pub_id) ")
 
+#  Difficulty here is how to generate a pub list on the edge without duplicating the edge.  Then again - are multiple edges so bad?  --- not Great for OWL version.
 for d in dict_cursor(cursor):
     statements = []
     statements.append("MATCH (:GeneProduct { short_form: '%s' )<-[:expresses]-(ep:Expression_pattern), " \
-                      "(fbex:? { short_form = '%s')" \
+                      "(fbex:Class { short_form = '%s')" \
                       "MERGE (ep)-[:overlaps { pub : '%s' , short_form: 'RO_' }]->(fbex) "
                       % (d['funame'], d['fbex'], d['fbrf']))
 
 
 
-        
 
     
