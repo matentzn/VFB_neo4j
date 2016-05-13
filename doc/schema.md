@@ -3,7 +3,7 @@
 STATUS: DRAFT
 
 ## OLS representation of OWL
-OLS Neo4J representation of OWL currenly handles type assertions linking individuals to named classes (via instanceOf).  Would it be possible to have type expressions of the form "I type: R some C" translated as relationships [I -R- C] in the Neo4J graph?  Presumably an identical pattern is used to convert SubClassOf axioms to part_of etc relationships in OLS Neo4J.  
+OLS Neo4J representation of OWL currenly handles type assertions linking individuals to named classes (via instanceOf):
 
 
 Default OLS OWL translation:
