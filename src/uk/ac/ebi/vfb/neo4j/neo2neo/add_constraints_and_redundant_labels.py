@@ -21,7 +21,8 @@ nc.commit_list(deletions)
 ## Add constraints
 
 
-constraints = ['CREATE CONSTRAINT ON (c:VFB) ASSERT c.short_form IS UNIQUE']
+constraints = ['CREATE CONSTRAINT ON (c:VFB:Class) ASSERT c.short_form IS UNIQUE', 
+               'CREATE CONSTRAINT ON (c:VFB:Individual) ASSERT c.short_form IS UNIQUE']
 nc.commit_list(constraints)
 # Should really give up if constraints fail.
 
