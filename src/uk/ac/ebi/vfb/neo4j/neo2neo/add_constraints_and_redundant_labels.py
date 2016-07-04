@@ -21,11 +21,17 @@ nc.commit_list(deletions)
 ## Add constraints
 
 
-constraints = ['CREATE CONSTRAINT ON (c:VFB:Class) ASSERT c.short_form IS UNIQUE', 
-               'CREATE CONSTRAINT ON (c:VFB:Individual) ASSERT c.short_form IS UNIQUE']
-nc.commit_list(constraints)
+# Commenting for now. constraints = ['CREATE CONSTRAINT ON (c:VFB) ASSERT c.short_form IS UNIQUE', 
+#               'CREATE CONSTRAINT ON (c:VFB) ASSERT c.short_form IS UNIQUE']
+# nc.commit_list(constraints)
+# 
 # Should really give up if constraints fail.
 
+### Cypher query to find dups.
+# "MATCH (n:VFB)
+# WITH n.short_form AS prop, collect(n) AS nodelist, count(*) AS COUNT
+# WHERE count > 1
+# RETURN prop, nodelist, count;"
 
 ## Denormalise - adding labels for major categories:
 
@@ -37,6 +43,9 @@ label_types = {
    'Neuron': 'neuron',
    'Tract': 'synaptic neuropil tract',
    'Synaptic_neuropil': 'synaptic neuropil',
+   'Synaptic_neuropil_domain', 'synaptic neuropil domain',
+   'Synaptic_neuropil_subdomain', 'synaptic neuropil subdomain',
+   'Synaptic_neuropil_block', 'synaptic neuropil block',   
    'Clone': 'neuroblast lineage clone'
    }
 
