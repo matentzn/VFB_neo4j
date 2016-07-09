@@ -43,9 +43,9 @@ label_types = {
    'Neuron': 'neuron',
    'Tract': 'synaptic neuropil tract',
    'Synaptic_neuropil': 'synaptic neuropil',
-   'Synaptic_neuropil_domain', 'synaptic neuropil domain',
-   'Synaptic_neuropil_subdomain', 'synaptic neuropil subdomain',
-   'Synaptic_neuropil_block', 'synaptic neuropil block',   
+   'Synaptic_neuropil_domain': 'synaptic neuropil domain',
+   'Synaptic_neuropil_subdomain': 'synaptic neuropil subdomain',
+   'Synaptic_neuropil_block': 'synaptic neuropil block',   
    'Clone': 'neuroblast lineage clone'
    }
 
