@@ -39,15 +39,19 @@ statements = []
 cursor.execute("SELECT pub.title, pub.miniref, pub.pyear, pub.pages, " \
             "pub.volume, typ.name, pub.uniquename as fbrf " \
             "FROM pub JOIN cvterm typ on typ.cvterm_id = pub.type_id " \
-            "WHERE pub.uniquename = ANY(%s)", (pub_list,))  # TODO - test whether cast to list works here
+            "WHERE pub.uniquename = ANY(%s)", (pub_list,))  # Odd syntax necessary for cast
 
     
 dc = dict_cursor(cursor)
 for d in dc:
+    if d['title']:
+        title = re.sub('"', "\\'", d['title'])
+    else:
+        title = ''
     statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' " \
                       "SET p.title = \"%s\", p.miniref = \"%s\", " \
                       "p.volume = '%s', p.year = '%s', p.pages = '%s'" \
-                      % (d['fbrf'], re.sub('"', "\\'", d['title']), d['miniref'], d['volume'], d['pyear'], d['pages']))
+                      % (d['fbrf'], title, d['miniref'], d['volume'], d['pyear'], d['pages']))
     # Note on quoting: Double quotes safer for longer text which may have single quotes internally
     # Titles occasionally have double quotes in.  These are escaped via re.sub  
 
