@@ -19,7 +19,7 @@ nc = neo4j_connect(base_uri, usr, pwd)
 # Pull all pub FBrfs from graph
 statements = ['MATCH (pub) RETURN DISTINCT pub.FlyBase']
 pub_list_results = nc.commit_list(statements)
-pub_list = [x['row'][0] for x in pub_list_results[0]['data']] # Parsing returned Json for results.
+pub_list = [str(x['row'][0]) for x in pub_list_results[0]['data']] # Parsing returned Json for results.
 
 c = get_fb_conn()
 cursor=c.cursor()
@@ -76,7 +76,7 @@ for d in dict_cursor(cursor):
                   "SET p.DOI = '%s'" % (d['fbrf'],d['acc']))
             
         
-nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 1000)
+nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 1)
 c.close()
 # Ways to extend:  
 ##  Add authors
