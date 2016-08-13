@@ -32,20 +32,25 @@ Can these be paged or streamed?
 @author: davidos
 '''
 
+# Using rest API to write (required for 2.n prod)
 
 from neo4j.v1 import GraphDatabase, basic_auth
 import sys
 from uk.ac.ebi.vfb.neo4j.tools import neo4j_connect 
 
 d = GraphDatabase.driver(url='bolt://blanik.inf.ed.ac.uk:7687',
-                         auth=basic_auth("neo4j", "DL1adPN"))
+                         auth=basic_auth(sys.argv[1], sys.argv[2]))
+
+nc = neo4j_connect('http://blanik.inf.ed.ac.uk:7447',
+                         sys.argv[1], sys.argv[2])
 session = d.session()
-result = session.run("MATCH (s)-[r]-(o) RETURN s,r,o limit 10")
 
 # Assuming can handle full dump of triples!
 # Assuming everything can be done with short_forms and edge types (can't yet).
 
 class node2cypher:
+    """A Class for generating Cypher statements for adding content
+     from nodes returned by boldt queries.  Assumes nodes have short_form property"""
     def __init__(self, node):
         self.node = node
         self.short_form = node.properties['short_form']
@@ -74,10 +79,13 @@ class node2cypher:
             return False
             
 class triple2cypher():
+    """A Class for generating Cypher statements for adding content from triples
+     returned by the simple bolt query: session.run("MATCH (s)-[r]-(o) RETURN s,r,o")"""
+     
     def __init__(self, triple):
         self.triple = triple
         self.obj = node2cypher(triple['o'])
-        self.subj = node2cypher(triple['o'])
+        self.subj = node2cypher(triple['s'])
         self.edge_type = triple['r'].type
         
 
@@ -88,39 +96,36 @@ class triple2cypher():
         
       
     
-    
-
+result = session.run("MATCH (s)-[r]-(o) RETURN s,r,o limit 10")
 
 statements = []
+
 while result:
     t2c = triple2cypher(result.single())
     nodes = [t2c.subj, t2c.obj]
     for n in nodes:
         statements.append(n.get_node_merge_statement('n'))
+        # Only add properties for nodes that are not classes
         if 'Class' not in n.labels:
             statements.append(n.get_property_set_statements())
     # Add conditional here to avoid adding triples when Individual is anatomical and relation type is INSTANCEOF
-    
     statements.append(t2c.gen_triple_merge_statement())
     
-    
-nc.commit_list_in_chunks()         
+nc.commit_list_in_chunks()
 
 
-result.peek()
 
-Out[74]: <Record s=<Node id=284 labels={'Class'}
-properties={'short_form': 'FBbi_00000224', 'label': 'computer
-graphic'}> r=<Relationship id=212035 start=121660 end=284
-type='Related' properties={'short_form': 'OBI_0000312', 'label': 'has
-specified output', 'uri':
-'http://purl.obolibrary.org/obo/OBI_0000312'}> o=<Node id=121660
-labels={'Individual', 'VFB'} properties={'short_form':
-'VFBc_00030868', 'label': 'INP - painted domain JFRC2_c', 'iri':
-'http://www.virtualflybrain.org/owl/VFBc_00030868', 'ontology_name':
-'vfb'}>>
-
-peek = result.peek()
-
-peek['s'].properties
-Out[79]: {'label': 'computer graphic', 'short_form': 'FBbi_00000224'}
+# result 
+#Out[74]: <Record s=<Node id=284 labels={'Class'}
+#graphic'}> r=<Relationship id=212035 start=121660 end=284
+#properties={'short_form': 'FBbi_00000224', 'label': 'computer
+#specified output', 'uri':
+#type='Related' properties={'short_form': 'OBI_0000312', 'label': 'has
+#'http://purl.obolibrary.org/obo/OBI_0000312'}> o=<Node id=121660
+#labels={'Individual', 'VFB'} properties={'short_form':
+#'VFBc_00030868', 'label': 'INP - painted domain JFRC2_c', 'iri':
+#'http://www.virtualflybrain.org/owl/VFBc_00030868', 'ontology_name':
+#'vfb'}>>
+#peek = result.peek()
+#peek['s'].properties
+#Out[79]: {'label': 'computer graphic', 'short_form': 'FBbi_00000224'}
