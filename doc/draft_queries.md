@@ -1,3 +1,25 @@
+### Anatomical results page query
+
+The IN clause should be populated by an appropriate number of results.
+1 query (20 results?) => first page 
+Second query in background => complete results table
+
+QUERY STATUS: TESTED, WORKS
+
+~~~~~~~~~~.cql
+
+MATCH (n:VFB:Class) WHERE n.short_form IN 
+['FBbt_00007405', 'FBbt_00007422', 'FBbt_00007225', 'FBbt_00100477'] 
+WITH n 
+OPTIONAL MATCH (n)<-[:SUBCLASSOF|INSTANCEOF*..]-(a:Individual)
+<-[:Related { label: 'depicts'}]-(c:Individual)
+-[:Related { label: 'has_signal_channel'}]->(image:Individual), 
+(n)-[:has_reference]->(p:pub)
+RETURN n.label AS class_label, n.definition as class_def, n.short_form AS class_id
+COLLECT (DISTINCT { FlyBase: p.FlyBase, miniref:  p.miniref}) AS pubs, 
+COLLECT (DISTINCT { anat_ind_name: a.label, image_id: image.short_form}) AS inds
+
+~~~~~~~~~~~
 
 ### Generating trees for a given template.
 
@@ -25,7 +47,10 @@ Query Status: Tested.  Works.
 
 ~~~~~~~~~~~.cql
 
-MATCH (t:Individual { label : 'JFRC2_template'})<-[:Related { label : 'has_background_channel' }]-(image:Individual)-[:Related { label : 'has_signal_channel' }]-(c:Individual)-[:Related { label : 'has specified output' }]->(p:Class { label : 'computer graphic' }), (c)-[:Related { label : 'depicts' } ]->(a:Individual)-[:INSTANCEOF]->(ac:Class) 
+MATCH (t:Individual { label : 'JFRC2_template'})<-[:Related { label : 'has_background_channel' }]
+-(image:Individual)-[:Related { label : 'has_signal_channel' }]-(c:Individual)
+-[:Related { label : 'has specified output' }]->(p:Class { label : 'computer graphic' }),
+(c)-[:Related { label : 'depicts' } ]->(a:Individual)-[:INSTANCEOF]->(ac:Class) 
 WITH  COLLECT (ac.short_form) as tree_nodes
 MATCH p=allShortestPaths((root:Class { label : 'adult brain'
 })<-[:SUBCLASSOF|part_of*..]-(anat:Class)) WHERE anat.short_form IN tree_nodes
@@ -38,8 +63,12 @@ Query Status: Tested.  Works
 
 ~~~~~~~~~~~.cql
 
-MATCH (t:Individual { label : 'JFRC2_template'})<-[:Related { label : 'has_background_channel' }]-(image:Individual)-[:Related { label : 'has_signal_channel' }]-(c:Individual)-[:Related { label : 'has specified output' }]->(p:Class { label : 'computer graphic' }), (c)-[:Related { label : 'depicts' } ]->(a:Individual)-[:INSTANCEOF]->(ac:Class:) 
-WITH  COLLECT (ac.short_form) as tree_nodes, COLLECT (DISTINCT{ image: image.short_form, anat_ind: a.short_form, type: ac.short_form}) AS domain_map
+MATCH (t:Individual { label : 'JFRC2_template'})<-[:Related { label : 'has_background_channel' }]
+-(image:Individual)-[:Related { label : 'has_signal_channel' }]-(c:Individual)
+-[:Related { label : 'has specified output' }]->(p:Class { label : 'computer graphic' }),
+(c)-[:Related { label : 'depicts' } ]->(a:Individual)-[:INSTANCEOF]->(ac:Class:) 
+WITH  COLLECT (ac.short_form) as tree_nodes, 
+COLLECT (DISTINCT{ image: image.short_form, anat_ind: a.short_form, type: ac.short_form}) AS domain_map
 MATCH p=allShortestPaths((root:Class { label : 'adult brain'
 })<-[:SUBCLASSOF|part_of*..]-(anat:Class)) WHERE anat.short_form IN tree_nodes
 RETURN p, domain_map
