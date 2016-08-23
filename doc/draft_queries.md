@@ -41,7 +41,7 @@ MATCH p=allShortestPaths((root:Class { label : 'adult brain'
 
 ~~~~~~~~~~
 
-Alternative, returning graph returning classes only
+#### Alternative, returning graph returning classes only
 
 Query Status: Tested.  Works.
 
@@ -57,7 +57,7 @@ MATCH p=allShortestPaths((root:Class { label : 'adult brain'
 
 ~~~~~~~~~~~
 
-Alternative, returning class graph + separate map from class to domain.
+#### Alternative, returning class graph + separate map from class to domain.
 
 Query Status: Tested.  Works
 
