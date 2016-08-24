@@ -58,5 +58,8 @@ label_additions = []
 for k,v in label_types.items():
     label_additions.append("MATCH (n)-[r:SUBCLASSOF|INSTANCEOF*]->(n2:Class) WHERE n2.label = '%s' SET n:%s" % (v, k))
 
+label_additions.append("MATCH (image:Individual)-[:Related { label: 'has_background_channel'}]->(channel:Individual) " \
+                       "SET channel:Template")
+
 nc.commit_list(label_additions)
 
