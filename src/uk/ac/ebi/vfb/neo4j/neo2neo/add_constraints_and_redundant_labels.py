@@ -39,19 +39,24 @@ nc.commit_list(deletions)
 # A more flexible structure would use lists in values to allow labels from unions
 # Also add label type for FlyBase feature?
 
+
 label_types = {
    'Neuron': 'neuron',
-   'Tract': 'synaptic neuropil tract',
+   'Sensory_neuron': 'sensory neuron',
+   'Motor_neuron' : 'motor neuron',
+   'Peptidergic_neuron' : 'peptidergic neuron', 
+   'Neuron_projection_bundle' : 'neuron projection bundle',
    'Synaptic_neuropil': 'synaptic neuropil',
    'Synaptic_neuropil_domain': 'synaptic neuropil domain',
    'Synaptic_neuropil_subdomain': 'synaptic neuropil subdomain',
    'Synaptic_neuropil_block': 'synaptic neuropil block',   
-   'Clone': 'neuroblast lineage clone'
+   'Clone': 'neuroblast lineage clone',
+   'Cluster': 'cluster'
    }
 
 label_additions = []
 for k,v in label_types.items():
-    label_additions.append("MATCH (n:Class)-[r:SUBCLASSOF*]->(n2:Class) WHERE n2.label = '%s' SET n:%s" % (v, k))
+    label_additions.append("MATCH (n)-[r:SUBCLASSOF|INSTANCEOF*]->(n2:Class) WHERE n2.label = '%s' SET n:%s" % (v, k))
 
 nc.commit_list(label_additions)
 
