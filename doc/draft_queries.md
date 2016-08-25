@@ -1,4 +1,4 @@
-### Cluster to anatomical individual
+### Anatomical individual to cluster
 
 ~~~~~~~.cql
 
