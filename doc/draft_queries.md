@@ -1,3 +1,20 @@
+### Cluster to anatomical individual
+
+~~~~~~~.cql
+
+MATCH (:Individual { short_form :'VFB_00009700' })-[:Related { label : 'member_of' }]->
+(cluster:Individual)-[:Related { label : 'has_exemplar' }]-(exemplar:Individual)
+RETURN cluster, exemplar
+
+--- Clusters returned are named "Cluster v.n" where v = clustering version, n = cluster id. 
+
+MATCH (:Individual { short_form :'VFB_00009700' })-[:Related { label : 'member_of' }]->
+(cluster:Individual)-[:Related { label : 'member_of' }]-(member:Individual)
+RETURN member
+~~~~~~~~~~
+
+
+
 ### Anatomical results page query
 
 The IN clause should be populated by an appropriate number of results.
