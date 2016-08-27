@@ -55,6 +55,7 @@ MATCH (t:Individual { label : 'JFRC2_template'})<-[:Related { label : 'has_backg
 WITH  COLLECT (a.short_form) as tree_nodes
 MATCH p=allShortestPaths((root:Class { label : 'adult brain'
 })<-[:SUBCLASSOF|part_of|INSTANCEOF*..]-(anat:Individual)) WHERE anat.short_form IN tree_nodes
+RETURN p
 
 ~~~~~~~~~~
 
@@ -71,6 +72,7 @@ MATCH (t:Individual { label : 'JFRC2_template'})<-[:Related { label : 'has_backg
 WITH  COLLECT (ac.short_form) as tree_nodes
 MATCH p=allShortestPaths((root:Class { label : 'adult brain'
 })<-[:SUBCLASSOF|part_of*..]-(anat:Class)) WHERE anat.short_form IN tree_nodes
+RETURN p
 
 ~~~~~~~~~~~
 
@@ -83,7 +85,7 @@ Query Status: Tested.  Works
 MATCH (t:Individual { label : 'JFRC2_template'})<-[:Related { label : 'has_background_channel' }]
 -(image:Individual)-[:Related { label : 'has_signal_channel' }]-(c:Individual)
 -[:Related { label : 'has specified output' }]->(p:Class { label : 'computer graphic' }),
-(c)-[:Related { label : 'depicts' } ]->(a:Individual)-[:INSTANCEOF]->(ac:Class:) 
+(c)-[:Related { label : 'depicts' } ]->(a:Individual)-[:INSTANCEOF]->(ac:Class) 
 WITH  COLLECT (ac.short_form) as tree_nodes, 
 COLLECT (DISTINCT{ image: image.short_form, anat_ind: a.short_form, type: ac.short_form}) AS domain_map
 MATCH p=allShortestPaths((root:Class { label : 'adult brain'
