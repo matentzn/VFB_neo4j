@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/VirtualFlyBrain/VFB_neo4j.svg?branch=master)](https://travis-ci.org/VirtualFlyBrain/VFB_neo4j)
+
+
 # VFB_neo4j
 
 Neo4J server:
