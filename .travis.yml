@@ -1,0 +1,7 @@
+services:
+  - neo4j
+   
+language: python
+
+python: 
+  - "3.5"
