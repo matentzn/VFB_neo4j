@@ -11,11 +11,14 @@ install: "pip install neo4j-driver"
 
 services:
   - neo4j
-  
+ 
+env:
+  - VN="uk.ac.ebi.vfb.neo4j"
+
   
 script: 
   - cd src
-  - python uk/ac/ebi/vfb/neo4j/test/rest_test.py
+  - python -m uk.ac.ebi.vfb.neo4j.test.rest_test
    
 
 
