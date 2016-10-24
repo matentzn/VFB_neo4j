@@ -4,6 +4,7 @@ import sys
 nc = neo4j_connect('http://localhost:7474', 'neo4j', 'neo4j')
 
 if not nc.commit_list("CREATE (t:Test { fu: 'bar' })"):
-  sys.exit('1')
+    sys.exit('1')
+    
   
   
