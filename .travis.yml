@@ -1,6 +1,6 @@
-services:
-  - neo4j
-   
+sudo: required
+dist: trusty
+
 language: python
 
 python: 
@@ -8,5 +8,10 @@ python:
   
 install: "pip install requests"
 install: "pip install neo4j-driver"
+
+services:
+  - neo4j
+   
+
 
 
