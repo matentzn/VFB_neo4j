@@ -15,7 +15,7 @@ services:
   
 script: 
   - cd src
-  - python uk.ac.ebi.vfb.neo4j.travis_neo_tests.rest_test.py
+  - python uk/ac.ebi/vfb/neo4j/travis_neo_tests/rest_test.py
    
 
 
