@@ -6,16 +6,21 @@ language: python
 python: 
   - "3.5"
   
-install: "pip install requests"
-install: "pip install neo4j-driver"
+install: 
+  - "pip install requests"
+  - "pip install neo4j-driver"
 
 services:
   - neo4j
-  
+ 
+env:
+  - VN="uk.ac.ebi.vfb.neo4j"
+
   
 script: 
+  - curl "http://localhost:7474/db/data/"
   - cd src
-  - python uk/ac/ebi/vfb/neo4j/travis_neo_tests/rest_test.py
+  - python -m $VN.test.neo_tools_test
    
 
 
