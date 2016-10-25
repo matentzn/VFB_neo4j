@@ -18,8 +18,9 @@ env:
 
   
 script: 
+  - curl "http://localhost:7474/db/data/"
   - cd src
-  - python -m uk.ac.ebi.vfb.neo4j.test.rest_test
+  - python -m $VN.test.neo_tools_test
    
 
 
