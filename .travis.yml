@@ -18,7 +18,7 @@ env:
 
   
 script: 
-  - curl "http://localhost:7474/db/data/"
+  - curl -u neo4j:neo4j "http://localhost:7474/db/data/"
   - cd src
   - python -m $VN.test.neo_tools_test
    
