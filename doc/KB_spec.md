@@ -67,7 +67,9 @@ Anatomy queries
 # Expression pattern spec
 
 
-* Expression patterns are derived from FlyBase features, with which they have a 1:1 relationship.  (TBA - link to semantic spec.)
+* Expression patterns are derived from FlyBase features, with which they have a 1:1 relationship.  
+
+[General semantic spec for expression patterns](https://github.com/obophenotype/expression_patterns/blob/master/doc/expresion_pattern_schema_spec.md)
 
 * Expression pattern IDs must be stable
 
