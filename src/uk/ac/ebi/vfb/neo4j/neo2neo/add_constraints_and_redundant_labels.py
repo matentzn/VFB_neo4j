@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import sys
-from uk.ac.ebi.vfb.neo4j.tools import Neo4jConnect
+from uk.ac.ebi.vfb.neo4j.tools import neo4j_connect
 
-nc = Neo4jConnect(base_uri = sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
+nc = neo4j_connect(base_uri = sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
 
 # Some AP deletions required for uniqueness constraints.  Needed due to quirks of OLS import.
 
