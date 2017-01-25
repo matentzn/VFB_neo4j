@@ -2,7 +2,7 @@
 
 ## General description:
 
-\1. A persistence store for image annotation.
+\\1. A persistence store for image annotation.
 
 *Image annotation consists of:*
 
@@ -66,20 +66,14 @@ Anatomy queries
 
 # Expression pattern spec
 
+* Expression patterns are derived from FlyBase features, with which they have a 1:1 relationship.  
 
-* Expression patterns are derived from FlyBase features, with which they have a 1:1 relationship.  (TBA - link to semantic spec.)
+[General semantic spec for expression patterns](https://github.com/obophenotype/expression_patterns/blob/master/doc/expresion_pattern_schema_spec.md)
 
 * Expression pattern IDs must be stable
 
-* Classification of expression patterns & expression pattern fragments should work via OWL reasoning:
+* Classification of expression patterns & expression pattern fragments should work via OWL reasoning
 
-Class: 'expression pattern of X' EquivalentTo 'expression pattern that expresses some X'
-
-'expression pattern of X in Y': 
-
-GCI: cell that expresses some X SubClassOf part_of some 
+See [general semantic spec for expression patterns](https://github.com/obophenotype/expression_patterns/blob/master/doc/expresion_pattern_schema_spec.md)
 	
-	Expression pattern of X in Y:  the part of  
-	
-
 
