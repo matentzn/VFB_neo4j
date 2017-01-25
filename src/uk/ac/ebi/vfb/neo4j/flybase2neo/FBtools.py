@@ -47,7 +47,7 @@ class FB2Neo(object):
     def run_query(self, query):
         """Runs a query of public Flybase, 
         returns results as interable of dicts keyed on columns names"""
-        cursor = self.conn.cursor() # Investigate with statement
+        cursor = self.conn.cursor() # Investigate using with statement
         cursor.execute(query)
         dc  = dict_cursor(cursor)
         cursor.close()
@@ -57,9 +57,7 @@ class FB2Neo(object):
         self.conn.commit()
         
     def close(self):
-        self.close()  # Investigate implementing with statement compatibility.
-        
-
+        self.close()  # Investigate implementing using with statement.  Then method not required.
     
     def update_features(self, fbids):
         pass
@@ -67,7 +65,9 @@ class FB2Neo(object):
         
 
 class FeatureRelationship(FB2Neo):
-        
+    """A class for navigating the feature relationship graph.  
+    Methods all take lists of short_form IDs and return a list of triples as python tuples.
+    """    
     def get_objs(self, subject_ids, chado_rel, out_rel, o_idp):
         query_template = "SELECT s.uniquename AS subj, o.uniquename AS obj FROM feature s " \
                         "JOIN feature_relationship fr ON fr.subject_id=s.feature_id "  \
@@ -101,8 +101,15 @@ class FeatureRelationship(FB2Neo):
 
         
 class nameFeatures(FB2Neo):
-    def __init__(self,):
-        # Should also pull pubs in here???
+    """Looks up synonyms and official symbol in unicode
+    Adds them to Neo.
+    """
+    ### Aim here is to add full names and synonyms.  Query looks fine.  Seems a bit odd as a class. 
+    ### Why would you pass this round as an object?
+
+    ### If implmented in the same way as other ontology classes, then could add synonyms on edge links to pubs.
+    ### This would rather bloat the DB though...  Or Should I not be worrying about size...
+    def __init__(self):
         self.init()
         self.query = "SELECT f.uniquename as fbid, s.name as ascii_name, stype.name AS stype, " \
                     "fs.is_current, s.synonym_sgml as unicode_name " \
@@ -133,6 +140,8 @@ class nameFeatures(FB2Neo):
         return results             
       
     def addSynsToNeo(self, fbids):
+        """Adds unicode label and a list of synonyms.
+        """
         names = self.nameSynonymLookup(fbids)
         statements = []  
         for fbid, v in names.items():            
