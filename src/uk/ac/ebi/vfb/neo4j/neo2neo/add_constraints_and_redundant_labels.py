@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import sys
-from uk.ac.ebi.vfb.neo4j.tools import neo4j_connect
+from uk.ac.ebi.vfb.neo4j.tools import Neo4jConnect
 
-nc = neo4j_connect(base_uri = sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
+nc = Neo4jConnect(base_uri = sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
 
 # Some AP deletions required for uniqueness constraints.  Needed due to quirks of OLS import.
 
@@ -56,10 +56,12 @@ label_types = {
 
 label_additions = []
 for k,v in label_types.items():
-    label_additions.append("MATCH (n)-[r:SUBCLASSOF|INSTANCEOF*]->(n2:Class) WHERE n2.label = '%s' SET n:%s, n2:%s" % (v, k, k))
+    label_additions.append("MATCH (n)-[r:SUBCLASSOF|INSTANCEOF*]->(n2:Class) " \
+                           "WHERE n2.label = '%s' SET n:%s, n2:%s" % (v, k, k))
 
-label_additions.append("MATCH (image:Individual)-[:Related { label: 'has_background_channel'}]->(channel:Individual) " \
-                       "SET channel:Template")
+label_additions.append("MATCH (image:Individual)-[:Related { label: 'has_background_channel'}]" \
+                       "->(channel:Individual)-[:Related { label: 'depicts'} ]->(anat:Individual) " \
+                       "SET anat:Template")
 
 nc.commit_list(label_additions)
 
