@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import psycopg2
 from ..tools import neo4j_connect, chunks
-from ..vfb_neo_tools import VFBCypherGen
+#from ..vfb_neo_tools import VFBCypherGen
 import re
 
 '''
