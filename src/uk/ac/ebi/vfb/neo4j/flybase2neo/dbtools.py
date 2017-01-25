@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import psycopg2
-from ..tools import Neo4jConnect, chunks
+from ..tools import neo4j_connect, chunks
 from ..vfb_neo_tools import VFBCypherGen
 import re
 
@@ -41,7 +41,7 @@ class FB2Neo(object):
     
     def _init(self, endpoint, usr, pwd):
         self.conn = get_fb_conn()
-        self.nc = Neo4jConnect(endpoint, usr, pwd)
+        self.nc = neo4j_connect(endpoint, usr, pwd)
         self.fb_base_URI = 'http://www.flybase.org/reports/'
         
     def run_query(self, query):
