@@ -17,13 +17,13 @@ from .tools import neo4j_connect
 # Match statements checks for all relevant entites, including relations if applicable. Implementing methods should 
 # check return values and warn/fail as appropriate if no match.
 
-class kb_owl_edge_writer(object):
-    
+class kb_writer (object):  
+      
     def __init__(self, endpoint, usr, pwd):
         self.nc = neo4j_connect(endpoint, usr, pwd)
         self.statements = []
         self.output = []
-           
+        
     def commit(self, verbose = False, chunk_length = 5000):
         """Commits Cypher statements stored in object.
         Flushes existing statement list.
@@ -35,7 +35,7 @@ class kb_owl_edge_writer(object):
         self.statements = []
         self.test_edge_addition()
         return self.output
-        
+    
     def _set_attributes_from_dict(self, var, attribute_dict):
         """Generates CYPHER `SET` sub-clauses 
         from key value pairs in a dict (attribute_dict).
@@ -55,7 +55,10 @@ class kb_owl_edge_writer(object):
                 warnings.warn("Can't use a %s as an attribute value in Cypher. Content :%s" 
                               % (type(v), (str(v))))
         return out
+
+class kb_owl_edge_writer(kb_writer):
     
+
     def _add_related_edge(self, s, r, o, stype, otype, edge_annotations = {}):
         out =  "MATCH (s:%s { IRI:'%s'} ), (rn:Relation { IRI: %s' }), (o:%s { IRI:'%s'} ) " % (
                                                                            stype, s, r, otype, o)
@@ -111,18 +114,54 @@ class kb_owl_edge_writer(object):
             return False
         else:
             return True
+
+class owl_import_update(kb_writer):
+    """Constructor: owl_import_update(endpoint, usr, pwd)
+    """
+    
+    def update_from_obograph(self, obograph):
+        """Update property and class nodes from an OBOgraph"""
+        """(currently does not distinguish OPs from APs!)
+        """
+        #  Function to update from obographs representation
+        ## Adds new classes if not present
+        ## Updates the labels of existing classes node['lbl']
+        ## Update obsoletion status (node['meta']['deprecated'])
+        
+        
+        ## Warns if a class in-use has been obsoleted?  - Punt this to other code.
+        
+        
+        for node in obograph:
+            out = ''
+            if node['type'] == 'CLASS':    
+                out = "MERGE (c:Class { iri = '%s'}) " % node['id']
+            if node['type'] == 'PROPERTY':    
+                out = "MERGE (c:Property { iri = '%s'}) " % node['id']
+            out += "SET c.label = '%s' " % node['lbl']
+            if 'meta' in node.keys():
+                if 'deprecated' in node['meta'].keys():
+                    out += "SET c.is_obsolete = %s " % node['meta']['deprecated']
+            self.statements.append(out)
+
+# Specs for a fb_feature_update
+## Pull current feature nodes from DB
+## Look up.
+
+#class fb_feature_update(kb_writer):   
+ #   query = "SELECT uniquename, name, is_obsolete from feature"
     
 
-def add_ind(self, iri, short_form, label, synonyms = [], additional_attributes = {}):
-    out = "MERGE (i:Individual { IRI: '%s'} ) " \
-            "SET i.short_form = '%s' " \
-            "SET i.label = '%s' " % (iri, short_form, label)
-    if synonyms:
-            out += "SET i.synonyms = %s  " % str(synonyms)     
-    out += self._set_attributes_from_dict('i', additional_attributes)
-    return out
+# def add_ind(self, iri, short_form, label, synonyms = [], additional_attributes = {}):
+#     out = "MERGE (i:Individual { IRI: '%s'} ) " \
+#             "SET i.short_form = '%s' " \
+#             "SET i.label = '%s' " % (iri, short_form, label)
+#     if synonyms:
+#             out += "SET i.synonyms = %s  " % str(synonyms)     
+#     out += self._set_attributes_from_dict('i', additional_attributes)
+#     return out
 
-def add_relation_node(self, iri, short_form, label):
-    return "MERGE (i:Relation { IRI: '%s'} ) " \
-            "SET i.short_form = '%s' " \
-            "SET i.label = '%s' " % (iri, short_form, label)
+# def add_relation_node(self, iri, short_form, label):
+#     return "MERGE (i:Relation { IRI: '%s'} ) " \
+#             "SET i.short_form = '%s' " \
+#             "SET i.label = '%s' " % (iri, short_form, label)
