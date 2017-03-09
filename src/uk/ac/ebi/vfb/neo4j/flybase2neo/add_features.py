@@ -9,6 +9,10 @@ from ..tools import chunks
 import re
 from uk.ac.ebi.vfb.neo4j.flybase2neo.FBtools import FeatureRelationship,\
     nameFeatures
+    
+# Aims
+## Add FlyBase features that are directly used in genotypes and expression annotation.
+## Retain genotype -> feature links
 
 def generate_monarch_genotype_short_form(chado_id):
     base_iri = 'https://monarchinitiative.org/'
@@ -21,8 +25,6 @@ def clean_sgml_tags(sgml_string):
     sgml_string = re.sub('\<\\up\>', '[[', sgml_string)
     sgml_string = re.sub('\<\\down>', ']]', sgml_string)
     return sgml_string
-
-
     
 
 class AddFeatures(FB2Neo):
@@ -113,7 +115,7 @@ class AddFeatures(FB2Neo):
                               "MERGE (epg)<-[:SUBCLASSOF]-(ep:Class { iri : '%s' } ) "  \
                               "-[:expresses { type : 'rel' }]-(f) " \
                               "SET ep.short_form ='%s', ep.label = '%s'"
-                              % ()
+                              % ())
         
         features = self.get_expressed_features()
         statements = []
