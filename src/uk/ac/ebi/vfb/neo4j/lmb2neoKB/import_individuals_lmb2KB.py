@@ -5,29 +5,47 @@ Created on 13 Aug 2016
 '''
 # A temporary expedient until import from OWL fixed, or we move to a native neo4J implementation of KB
 
+from ..KB_tools import kb_owl_edge_writer
+from ...curie_tools import map_iri
 from ..tools import neo4j_connect
-import pymysql
+from .lmb_query_tools import get_conn
 import sys
 
+vfb = map_iri(curie = 'vfb')
+obo = map_iri(curie = 'obo')
+
 ## Requires ssh tunnel
-c = pymysql.connect(host='localhost', user='flycircuit', db='flycircuit', 
-                    cursorclass=pymysql.cursors.DictCursor, port = 3307, 
-                    charset='utf8mb4',
-                    password = 'flycircuit')
-
-
+c = get_conn('flycircuit', 'flycircuit')
 
 nc = neo4j_connect(base_uri = sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
+edge_writer = kb_owl_edge_writer(endpoint= sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
 cursor = c.cursor()
 
 # Add uniqueness constratints:
 
-cypher_constraints = ["MATCH (i:Individual) ASSERT i.short_form IS UNIQUE",
-                      "MATCH (i:Individual) ASSERT i.iri IS UNIQUE"
-                      "CREATE INDEX ON :Individual(ontology_name)",
+cypher_constraints = ["CREATE CONSTRAINT ON (i:Individual) ASSERT i.short_form IS UNIQUE",
+                      "CREATE CONSTRAINT ON (i:Individual) ASSERT i.iri IS UNIQUE",
+#                      "CREATE INDEX ON :Individual(ontology_name)",
                       "CREATE INDEX ON :Individual(label)"]
 
 nc.commit_list(cypher_constraints)
+
+# Add all individuals
+# May need some regex escapes for ind names?
+
+inds_2_add = []
+cursor.execute("SELECT short_form, is_obsolete, label, short_name " \
+               "FROM owl_individual")
+
+for d in cursor.fetchall():
+    statement = "MERGE (i:Individual:VFB { IRI : '%s' } ) "  % vfb + d['short_form']
+    statement += "SET i.label = '%s' " % d['label']
+    statement += "SET i.is_obsolete = '%s'"  % bool(d['is_obsolete'])
+    statement += "SET i.synonyms = ['%s']" % d['short_name']
+    inds_2_add.append(statement)
+    
+nc.commit_list(inds_2_add)
+
 
 cursor.execute("SELECT s.shortFormID AS subj_sfid, " \
                "s.label AS subj_label,  " \
@@ -49,9 +67,14 @@ cypher_facts = []
 vfb_ind_base_uri = 'http://www.virtualflybrain.org/owl/'
 
 
-# May need some regex escapes for ind names?
-
+## Add all facts
 for d in cursor.fetchall():
+    edge_writer.add_fact(s = vfb + d['subj_sfid'],
+                         r = d['rBase'] + d['rel_sfid'], 
+                         o = vfb + d['obj_sfid'])
+
+    
+    
     # some relations (e.g. depicts) have no label
     if d['rel_label']:
         rel_label_string = ", label: '%s'" %  d['rel_label']
@@ -67,7 +90,7 @@ for d in cursor.fetchall():
     
 nc.commit_list_in_chunks(statements = cypher_facts, verbose = True, chunk_length = 5000) 
 
-# Add type assertions for images inds from lmb:
+# Add types
 
 cypher_types = []
 
@@ -86,18 +109,15 @@ cursor.execute("SELECT oc.shortFormID AS claz, " \
     
 for d in cursor.fetchall():
     if not d['rel_sfid']:
-        edge = ':INSTANCEOF'
+        edge_writer.add_named_type_ax(s = vfb + d['ind'], 
+                                      o = obo + d['claz']) # Should really be pulling base from SQL
     else:
-        edge = ":Related { short_form : '%s', label : '%s', uri : '%s%s' }" \
-                % (d['rel_sfid'], d['rel_label'], d['rBase'], d['rel_sfid'])
-                
-    cypher_types.append("MATCH (c:Class { short_form: '%s' }), (i:Individual:VFB { short_form : '%s' }) " \
-                              "MERGE (i)-[%s]->(c)" % 
-                              (d['claz'], d['ind'], edge))
+        edge_writer.add_anon_type_ax(s = vfb + d['ind'], 
+                                     r = d['rBase'] + d['rel_sfid'],
+                                      o = obo + d['claz']) # Should really be pulling base from SQL
+        
     
-nc.commit_list_in_chunks(statements = cypher_types, verbose = True, chunk_length = 5000)
-
-
+edge_writer.commit()
 
 
 
