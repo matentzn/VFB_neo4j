@@ -2,7 +2,7 @@ sudo: required
 dist: trusty
 
 before_install:
-  - docker run -d --publish=7474:7474 --publish=7687:7687 --env=NEO4J_AUTH=none --volume=$HOME/neo4j/data:/data neo4j:enterprise
+  - docker run -d --name db --publish=7474:7474 --publish=7687:7687 --env=NEO4J_AUTH=none --volume=$HOME/neo4j/data:/data neo4j:enterprise
   - sleep 5m
 
 services:
@@ -13,7 +13,7 @@ env:
 
 script: 
   - docker build -t virtualflybrain/neo4j-travis-test github.com/Robbie1977/Docker-VFB_neo4j-Python3
-  - docker run -i -t virtualflybrain/neo4j-travis-test python3 -m $VN.test.neo_tools_tests
+  - docker run --link db -t virtualflybrain/neo4j-travis-test python3 -m $VN.test.neo_tools_tests
 
 
 
