@@ -23,5 +23,6 @@ script:
   - curl -u neo4j:neo4j "http://localhost:7474/db/data/"
   - echo $VN
   - cd src
+  - python -m $VN.test.KB_tools_tests
   - python -m $VN.test.neo_tools_tests
 
