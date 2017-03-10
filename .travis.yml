@@ -1,5 +1,4 @@
 sudo: required
-dist: trusty
 
 before_install:
   - docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=none --volume=$HOME/neo4j/data:/data neo4j:enterprise
@@ -11,15 +10,18 @@ services:
 env:
   - VN="uk.ac.ebi.vfb.neo4j"
 
-script: 
-  - docker ps -a
-  - docker logs db
+language: python
+
+python:
+  - "3.5"
+
+install:
+  - "pip install requests"
+  - "pip install neo4j-driver"
+
+script:
   - curl -u neo4j:neo4j "http://localhost:7474/db/data/"
-  - docker build -t virtualflybrain/neo4j-travis-test github.com/Robbie1977/Docker-VFB_neo4j-Python3
-  - docker run --name test --link db virtualflybrain/neo4j-travis-test curl -u neo4j:neo4j "http://localhost:7474/db/data/"
-  - docker run --name test --link db virtualflybrain/neo4j-travis-test python3 -m $VN.test.neo_tools_tests
-  - docker ps -a
-  - docker logs db
-
-
+  - echo $VN
+  - cd src
+  - python -m $VN.test.neo_tools_tests
 
