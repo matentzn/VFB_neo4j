@@ -39,8 +39,6 @@ iri_head = 'http://virtualflybrain.org/reports/'
 fb_url = 'http://flybase.org/'
 fb_sub = 'reports/'
 fb_desc = 'A Database of Drosophila Genes and Genomes'
-link_short = 'link_to' # TODO: Replace with official ID
-creator_short = 'creator' # TODO: Replace with official ID
 
 
 print('Loading from FB...')
@@ -75,7 +73,7 @@ for d in dc:
             pubs[d['fbrf']].update({'PMID': d['acc']})
         else:
             pubs[d['fbrf']].update({d['db_name']: d['acc']})
-        print('*', end="")
+
 
 c.close()
 
@@ -148,7 +146,7 @@ for d in dict_cursor(cursor):
                           'MERGE (p)-[l:link_to {{subdomain:"{4}"}}]->(s) '.format(iri_head, paid, pub,
                                                                                       fb_url, subdomain,
                                                                                       statement, fb_sub, d=d))
-    print(':', end="")
+
 
 statements.append('MATCH (n:pub)-[r:creator]->(a:person) '
                   'WHERE has(n.year) AND has(a.surname) '
