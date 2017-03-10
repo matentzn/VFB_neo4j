@@ -86,7 +86,7 @@ for d in dc:
             f[d['fbid']]['synonyms'].append(clean_sgml_tags(str(d['unicode_name'])))
             if str(d['ascii_name']) not in ['', 'None', 'null']:
                 f[d['fbid']]['synonyms'].append(clean_sgml_tags(str(d['ascii_name'])))
-    print('<', end="")
+
 c.close()
 
 
@@ -117,9 +117,9 @@ for i in f:
                      'WITH t, s ' + \
                      'MERGE (t)-[:link_to {{subdomain:"{0}{1}"}}]->(s) '.format(fb_sub, map_feature_type(i, f[i]['type']))
     statements.append(statement)
-    print('>', end="")
 
-nc.commit_list_in_chunks(statements, verbose=True, chunk_length=1000)
+
+nc.commit_list_in_chunks(statements, verbose=False, chunk_length=1000)
 statements = []
 
 c = get_fb_conn()
@@ -140,5 +140,5 @@ for d in dc:
     statements.append(statement)
     print('.', end="")
 
-nc.commit_list_in_chunks(statements, verbose=True, chunk_length=1000)
+nc.commit_list_in_chunks(statements, verbose=False, chunk_length=1000)
 

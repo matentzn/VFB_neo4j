@@ -92,7 +92,7 @@ c.close()
 #         print('-', end="")
 
 
-nc.commit_list_in_chunks(statements, verbose=True, chunk_length=1000)
+nc.commit_list_in_chunks(statements, verbose=False, chunk_length=1000)
 statements = []
 
 
@@ -163,7 +163,7 @@ statements.append('MATCH (n:pub)-[r:creator]->(a:person) '
                   'END as microref '
                   'SET n.microref=microref')
 
-nc.commit_list_in_chunks(statements, verbose=True, chunk_length=1000)
+nc.commit_list_in_chunks(statements, verbose=False, chunk_length=1000)
 c.close()
 # Ways to extend:  
 ##  Add authors
