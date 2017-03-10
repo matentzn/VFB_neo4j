@@ -1,6 +1,9 @@
 sudo: required
 dist: trusty
 
+services:
+  - neo4j
+
 language: python
 
 python: 
@@ -9,9 +12,6 @@ python:
 install: 
   - "pip install requests"
   - "pip install neo4j-driver"
-
-services:
-  - neo4j
  
 env:
   - VN="uk.ac.ebi.vfb.neo4j"
