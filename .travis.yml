@@ -14,7 +14,7 @@ env:
 script: 
   - docker ps -a
   - docker logs db
-  - curl -u neo4j:neo4j "http://129.215.91.204:7474/db/data/"
+  - curl -u neo4j:neo4j "http://localhost:7474/db/data/"
   - docker build -t virtualflybrain/neo4j-travis-test github.com/Robbie1977/Docker-VFB_neo4j-Python3
   - docker run --name test --link db -t virtualflybrain/neo4j-travis-test python3 -m $VN.test.neo_tools_tests
   - docker ps -a
