@@ -13,7 +13,7 @@ env:
 
 script: 
   - docker build -t virtualflybrain/neo4j-travis-test github.com/Robbie1977/Docker-VFB_neo4j-Python3
-  - docker run --link db -t virtualflybrain/neo4j-travis-test python3 -m $VN.test.neo_tools_tests
+  - docker run --name test --link db -t virtualflybrain/neo4j-travis-test python3 -m $VN.test.neo_tools_tests
 
 
 
