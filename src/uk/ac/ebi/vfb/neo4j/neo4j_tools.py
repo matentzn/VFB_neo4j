@@ -21,6 +21,8 @@ def chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i+n]
+ 
+
         
 class neo4j_connect():
     """Thin layer over REST API to hold connection details, 
@@ -29,30 +31,34 @@ class neo4j_connect():
         self.base_uri=base_uri
         self.usr = usr
         self.pwd = pwd
+        self.test_connection()
        
     def commit_list(self, statements):
         """Commit a list of statements to neo4J DB via REST API.
         Prints requests status and warnings if any problems with commit.
         cypher_statments = list of cypher statements as strings
         base_uri = base URL for neo4J DB.
-        Errors are returned as warnings.
+        Errors prompt warnings, not exceptions, and cause return  = FALSE.
         Returns results (json, list) or False if any errors are encountered."""
         cstatements = []
     #   results = {}
         for s in statements:
             cstatements.append({'statement': s})
         payload = {'statements': cstatements}
-        response = requests.post(url = "%s/db/data/transaction/commit" % self.base_uri, auth = (self.usr, self.pwd) , data = json.dumps(payload))
+        response = requests.post(url = "%s/db/data/transaction/commit" 
+                                 % self.base_uri, auth = (self.usr, self.pwd) ,
+                                  data = json.dumps(payload))
         if self.rest_return_check(response):
-            return response.json()['results']
+            return response.json()['results'] # May be worth returning more in order to report errors.
         else:
             return False
+        
         
     def commit_list_in_chunks(self, statements, verbose=False, chunk_length=100):
         """Commit a list of statements to neo4J DB via REST API, split into chunks.
         cypher_statments = list of cypher statements as strings
         base_uri = base URL for neo4J DB
-        Default chunk size = 100 statements. This can be overidden by KWARG chunk_length
+        Default chunk size = 100 statements. This can be overridden by KWARG chunk_length
         """
         chunked_statements = chunks(l = statements, n=chunk_length)
         chunk_results = []
@@ -78,6 +84,18 @@ class neo4j_connect():
                 return False
             else:
                 return True
+            
+    def test_connection(self):
+        statements = ["MATCH (n) RETURN n LIMIT 1"]
+        if self.commit_list(statements):
+            return True
+        else:
+            return False
+            
+            
+
+
+        
             
                 
         

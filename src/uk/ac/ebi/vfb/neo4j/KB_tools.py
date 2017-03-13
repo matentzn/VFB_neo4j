@@ -6,20 +6,23 @@ Created on Mar 6, 2017
 import warnings
 import re
 import json
-from .tools import neo4j_connect
+import psycopg2
+from .neo4j_tools import neo4j_connect
+from .SQL_tools import get_fb_conn, dict_cursor
+from ..curie_tools import map_iri
 
 # Architecture question:  Should this wrap neo4j_connect?  Should it run and test batches of cypher statments?
 
 
 #  * OWL - Only edges of types Related, INSTANCEOF, SUBCLASSOF are exported to OWL.
-#    * (:Individual)-[:Related { URI: '', name: ''}]-(:Individual)  -> OWL FACT (OPA)
-#    * (:Individual)-[:Related { URI: '', name: ''}]-(:Class) -> OWL Type: R some C
-#    * (:Class)-[:Related { URI: '', name: ''}]-(:Individual) -> OWL SubClassOf: R value I
+#    * (:Individual)-[:Related { IRI: '', label: ''}]-(:Individual)  -> OWL FACT (OPA)
+#    * (:Individual)-[:Related { IRI: '', label: ''}]-(:Class) -> OWL Type: R some C
+#    * (:Class)-[:Related { IRI: '', label: ''}]-(:Individual) -> OWL SubClassOf: R value I
 
 # Match statements checks for all relevant entites, including relations if applicable. Implementing methods should 
 # check return values and warn/fail as appropriate if no match.
 
-class kb_writer (object):  
+class kb_writer (object):
       
     def __init__(self, endpoint, usr, pwd):
         self.nc = neo4j_connect(endpoint, usr, pwd)
@@ -59,10 +62,12 @@ class kb_writer (object):
         return out
 
 class kb_owl_edge_writer(kb_writer):
-    
+    """A class wrapping methods for updating imported entities in the KB.
+    Constructor: kb_owl_edge_writer(endpoint, usr, pwd)
+    """    
 
     def _add_related_edge(self, s, r, o, stype, otype, edge_annotations = {}):
-        out =  "MATCH (s:%s { IRI:'%s'} ), (rn:Relation { IRI: '%s' }), (o:%s { IRI:'%s'} ) " % (
+        out =  "MATCH (s:%s { IRI:'%s'} ), (rn:Property { IRI: '%s' }), (o:%s { IRI:'%s'} ) " % (
                                                                            stype, s, r, otype, o)
         out += "MERGE (s)-[re:Related { IRI: '%s'}]-(o) " % r
         out += self._set_attributes_from_dict('re', edge_annotations)        
@@ -118,14 +123,17 @@ class kb_owl_edge_writer(kb_writer):
         else:
             return True
 
-class owl_import_update(kb_writer):
-    """Constructor: owl_import_update(endpoint, usr, pwd)
+class owl_import_updater(kb_writer):
+    """A class wrapping methods for updating imported entities in the KB,
+    e.g. from ontologies, FlyBase, CATMAID.
+    Constructor: owl_import_updater(endpoint, usr, pwd)
     """
     
     def update_from_obograph(self, obograph_filepath):
-        """Update property and class nodes from an OBOgraph"""
+        """Update property and class nodes from an OBOgraph file"""
         """(currently does not distinguish OPs from APs!)
         """
+        # TODO: add optional arg to open from url.
         #  Function to update from obographs representation
         ## Adds new classes if not present
         ## Updates the labels of existing classes node['lbl']
@@ -149,6 +157,42 @@ class owl_import_update(kb_writer):
                 if 'deprecated' in node['meta'].keys():
                     out += "SET c.is_obsolete = %s " % node['meta']['deprecated']
             self.statements.append(out)
+        ### For effeciency - could try concatenating statements.
+            
+        
+    def update_from_flybase(self, load_list = []):
+            
+            
+            fbc = get_fb_conn()
+            
+            cursor = fbc.cursor()
+            # STUB
+            query = "SELECT f.uniquename, f.name, f.is_obsolete from feature f" \
+            "JOIN cvterm typ on f.type_id = typ.cvterm_id " 
+            if load_list:
+                load_list_string = "'" + "','".join(load_list) + "'"
+                query += "WHERE f.uniquename in (%s)" % load_list_string
+            else:
+                query += "WHERE typ.name in ('gene', " \
+                "'transposable_element_insertion_site', 'transgenic_transposon') "
+            
+            cursor.query(query)
+            dc = dict_cursor(cursor)
+            for d in dc:
+                out = "MERGE (c:Class:Feature { IRI = '%s'}) " % map_iri('fb') + d['uniquename']
+                out += "SET c.short_form = '%s' " % d['uniquename']
+                out += "SET is_obsolete = '%s' " % bool(d['is_obsolete'])
+            self.statements.append(out)
+            cursor.close()
+            fbc.close()
+    
+    def update_current_features_from_FlyBase(self):
+        self.statements.append("MATCH (f:Feature) return f.short_form")
+        current_features = self.nc.commit()    
+    ##              Some proc steps needed here.
+        
+        self.update_from_flybase(load_list = current_features())
+
 
 # Specs for a fb_feature_update
 ## Pull current feature nodes from DB

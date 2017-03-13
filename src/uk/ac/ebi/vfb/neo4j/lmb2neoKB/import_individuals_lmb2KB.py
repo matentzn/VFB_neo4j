@@ -7,7 +7,7 @@ Created on 13 Aug 2016
 
 from ..KB_tools import kb_owl_edge_writer
 from ...curie_tools import map_iri
-from ..tools import neo4j_connect
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect
 from .lmb_query_tools import get_conn
 import sys
 
@@ -31,21 +31,31 @@ cypher_constraints = ["CREATE CONSTRAINT ON (i:Individual) ASSERT i.short_form I
 nc.commit_list(cypher_constraints)
 
 # Add all individuals
-# May need some regex escapes for ind names?
+# May need some regex escapes for some ind names?
 
 inds_2_add = []
-cursor.execute("SELECT short_form, is_obsolete, label, short_name " \
+cursor.execute("SELECT shortFormID, is_obsolete, label, short_name, gene_name, idid, Name, Age, Putative_birth_time " \
+                "FROM owl_individual oi LEFT OUTER JOIN neuron n ON oi.uuid = n.uuid " \
                "FROM owl_individual")
 
 for d in cursor.fetchall():
     statement = "MERGE (i:Individual:VFB { IRI : '%s' } ) "  % vfb + d['short_form']
     statement += "SET i.label = '%s' " % d['label']
     statement += "SET i.is_obsolete = '%s'"  % bool(d['is_obsolete'])
-    statement += "SET i.synonyms = ['%s']" % d['short_name']
+    synonyms = []
+    xrefs = []
+    if d['short_name']: synonyms.append(d['short_name'])
+    if d['gene_name']: synonyms.append(d['gene_name'])
+    if d['gene_name']: xrefs.append("FlyCircuit_gene_name:" + d['gene_name'])
+    if d['idid']: xrefs.append("FlyCircuit_idid:" + d['idid'])
+    if d['Name']: xrefs.append("FlyCircuit_name:" + d['Name'])
+    if synonyms: statement += "SET i.synonyms = %s"  % str(synonyms)
+    if xrefs: statement += "SET i.xrefs = %s"  % str(synonyms)
     inds_2_add.append(statement)
     
 nc.commit_list(inds_2_add)
 
+## Add all facts
 
 cursor.execute("SELECT s.shortFormID AS subj_sfid, " \
                "s.label AS subj_label,  " \
@@ -63,36 +73,16 @@ cursor.execute("SELECT s.shortFormID AS subj_sfid, " \
 
 cypher_facts = []
 
-## Warning - hard wiring base URI here!
-vfb_ind_base_uri = 'http://www.virtualflybrain.org/owl/'
 
-
-## Add all facts
 for d in cursor.fetchall():
     edge_writer.add_fact(s = vfb + d['subj_sfid'],
                          r = d['rBase'] + d['rel_sfid'], 
                          o = vfb + d['obj_sfid'])
 
-    
-    
-    # some relations (e.g. depicts) have no label
-    if d['rel_label']:
-        rel_label_string = ", label: '%s'" %  d['rel_label']
-    else:
-        rel_label_string = ''
-    # First create individuals if they don't already exist.  Then create triple.    
-    cypher_facts.append('MERGE (s:Individual:VFB { short_form : "%s", label : "%s" , ontology_name : "vfb", iri: "%s%s"}) ' \
-                        'MERGE (o:Individual:VFB { short_form : "%s", label : "%s" , ontology_name : "vfb", iri: "%s%s"}) ' \
-                        'MERGE (s)-[:Related { short_form : "%s" %s, iri : "%s%s" }]->(o)'\
-                        % (d['subj_sfid'], d['subj_label'], vfb_ind_base_uri, d['subj_sfid'], 
-                           d['obj_sfid'], d['obj_label'], vfb_ind_base_uri, d['obj_sfid'], 
-                           d['rel_sfid'], rel_label_string, d['rBase'], d['rel_sfid']))
-    
-nc.commit_list_in_chunks(statements = cypher_facts, verbose = True, chunk_length = 5000) 
 
-# Add types
+edge_writer.commit()
 
-cypher_types = []
+# Add all types
 
 cursor.execute("SELECT oc.shortFormID AS claz, " \
                "oi.shortFormID AS ind, " \
@@ -119,5 +109,19 @@ for d in cursor.fetchall():
     
 edge_writer.commit()
 
+## Link to datasets, adding id_in_source to edge, allowing rolling links.
 
+cursor.execute("SELECT oi.shortFormID, ds.name, oi.id_in_source FROM owl_individual oi " \
+               "JOIN data_source ds ON oi.source_id = ds.id " \
+               "WHERE oi.shortFormID like 'VFBc\_%'")  # Only link channels to datasets.
 
+statements = []
+
+for d in cursor.fetchall():
+    statements.append("MATCH (c:Individual { short_form : '%s' }), (ds:data_source { name : '%s'})" \
+                      "MERGE (c)-[:has_source  { id_in_source: '%s' }]->(ds)" 
+                      % (d['shortFormID'], d['name']), d['id_in_source'])  # Should make the id_in_source conditional
+
+nc.commit_list_in_chunks(statements, chunk_length = 1000)
+cursor.close()
+c.close()

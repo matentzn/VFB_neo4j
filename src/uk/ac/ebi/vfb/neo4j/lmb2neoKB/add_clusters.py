@@ -4,7 +4,7 @@ Created on Mar 6, 2017
 @author: davidos
 '''
 
-from .lmb_query_tools import get_conn, dict_cursor
+from .lmb_query_tools import get_conn
 from ..KB_tools import kb_owl_edge_writer
 from ...curie_tools import map_iri
 import sys
@@ -16,7 +16,8 @@ edge_writer = kb_owl_edge_writer(endpoint=sys.argv[1], usr=sys.argv[2], pwd=sys.
 vfb = map_iri('vfb')
 obo = map_iri('obo')
 
-cursor.execute("SELECT DISTINCT ind.shortFormID as cvid, c.cluster as cnum, eind.shortFormID as evid, c.clusterv as cversion " \
+cursor.execute("SELECT DISTINCT ind.shortFormID as cvid, c.cluster as cnum, " \
+               "eind.shortFormID as evid, c.clusterv as cversion " \
                "FROM owl_individual ind " \
                "JOIN cluster c ON (ind.uuid=c.uuid) " \
                "JOIN clustering cg ON (cg.cluster=c.cluster) " \
@@ -27,11 +28,15 @@ cursor.execute("SELECT DISTINCT ind.shortFormID as cvid, c.cluster as cnum, eind
                "AND c.clusterv = '3'")
     
 # But are Individuals already present?
-# Yes
+# Yes, but they don't have names!  These need to be rolled as version.cluster.
+# Consider: Adding clustering version as attribute.
     
-dc = dict_cursor(cursor)
-for d in dc:
+for d in cursor.fetchall():
 #       vfb_ind.addNamedIndividual(d["cvid"])
+    edge_writer.statements.append("MATCH (c:Individual { IRI: '%s' }) " \
+                                  "SET c.label = '%s'" 
+                                  % (d['cvid'], 
+                                     "cluster " + d['cversion'] + '.' + d['cnum']))
     edge_writer.add_named_type_ax(s =vfb + 'VFB_10000005', 
                          o = vfb + d["cvid"])
 #       vfb_ind.label(d["cvid"], "cluster " + str(d["cversion"]) + "." + str(d["cnum"])) # Note ints returned by query need to be coerced into strings.
@@ -61,11 +66,13 @@ def map_to_clusters(cursor, vfb_ind):
 
     # Now add cluster assertions.  Note - these are declared in both directions as elk cannot cope with inverses.
 
-    dc = dict_cursor(cursor)
-    for d in dc:
+    for d in cursor.fetchall():
         edge_writer.add_fact(s = vfb + d['cvid'],
                   obo +"RO_0002351" , 
                   vfb + d['mvid'])
+        edge_writer.add_fact(s = vfb + d['mvid'],
+                  obo +"RO_0002350" , 
+                  vfb + d['cvid'])        
     cursor.close()
 
 edge_writer.commit()
