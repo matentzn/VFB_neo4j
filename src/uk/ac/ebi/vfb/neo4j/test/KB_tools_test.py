@@ -29,10 +29,11 @@ class Test(unittest.TestCase):
     def test_add_fact(self):
         # Check that edge write
         self.edge_writer.add_fact(s = 'Aya', r = 'loves', o = 'Freddy', edge_annotations = {} )  # TBA - put something in edge annotation
-        assert self.edge_writer.commit() == True  # Needs some work.  Good case for running test method separately
-        # TBA = test that pattern is actually added as intended using match
+        self.edge_writer.commit() 
+        assert self.edge_writer.test_edge_addition() == True  
         self.edge_writer.add_fact(s = 'Aya', r = 'loved', o = 'Freddy', edge_annotations = {} )
-        assert self.edge_writer.commit() == False
+        self.edge_writer.commit()        
+        assert self.edge_writer.test_edge_addition() == False  
         
     def test_add_anon_type_ax(self):
         pass
