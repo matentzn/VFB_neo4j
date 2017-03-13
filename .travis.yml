@@ -1,28 +1,28 @@
 sudo: required
-dist: trusty
 
-language: python
-
-python: 
-  - "3.5"
-  
-install: 
-  - "pip install requests"
-  - "pip install neo4j-driver"
+before_install:
+  - docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=none --volume=$HOME/neo4j/data:/data neo4j:enterprise
+  - sleep 30s
 
 services:
-  - neo4j
- 
+  - docker
+
 env:
   - VN="uk.ac.ebi.vfb.neo4j"
 
-  
-script: 
+language: python
+
+python:
+  - "3.5"
+
+install:
+  - "pip install requests"
+  - "pip install neo4j-driver"
+
+script:
   - curl -u neo4j:neo4j "http://localhost:7474/db/data/"
   - echo $VN
   - cd src
+  - python -m $VN.test.KB_tools_tests
   - python -m $VN.test.neo_tools_tests
-   
-
-
 

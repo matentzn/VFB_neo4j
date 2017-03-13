@@ -35,12 +35,10 @@ def gen_micro_ref_from_db():
 
 pubs = {}
 
-iri_head = 'http://virtualflybrain.org/iri/'
+iri_head = 'http://virtualflybrain.org/reports/'
 fb_url = 'http://flybase.org/'
 fb_sub = 'reports/'
 fb_desc = 'A Database of Drosophila Genes and Genomes'
-link_short = 'link_to' # TODO: Replace with official ID
-creator_short = 'creator' # TODO: Replace with official ID
 
 
 print('Loading from FB...')
@@ -59,7 +57,7 @@ cursor.execute("SELECT pub.title as title, pub.miniref as miniref, pub.pyear as 
 
 dc = dict_cursor(cursor)
 for d in dc:
-    if d['fbrf'] and d['fbrf'] not in ['', 'null', 'None']:
+    if 'FBrf' in d['fbrf']:
         if d['title']:
             title = re.sub("\'", "\\'", d['title'])
             title = re.sub('"', "\\'", title)
@@ -75,7 +73,7 @@ for d in dc:
             pubs[d['fbrf']].update({'PMID': d['acc']})
         else:
             pubs[d['fbrf']].update({d['db_name']: d['acc']})
-        print('*', end="")
+
 
 c.close()
 
@@ -94,7 +92,7 @@ c.close()
 #         print('-', end="")
 
 
-nc.commit_list_in_chunks(statements, verbose=True, chunk_length=1000)
+nc.commit_list_in_chunks(statements, verbose=False, chunk_length=1000)
 statements = []
 
 
@@ -124,37 +122,31 @@ for d in dict_cursor(cursor):
                           'ON CREATE SET a.short_form = "{1}", a.name = "{d[surname]}, {d[givennames]}", '
                           'a.surname="{d[surname]}", a.givennames="{d[givennames]}" ' 
                           'WITH a '
-                          'MERGE (p:pub {{iri:"{0}{2}"}}) '
-                          'ON CREATE SET p.short_form = "{2}"{7}'
+                          'MERGE (p:pub {{iri:"{3}{6}{2}"}}) '
+                          'ON CREATE SET p.short_form = "{2}"{5}'
                           'WITH a, p '
                           'MERGE (p)-[r:creator {{rank:{d[rank]}}}]->(a) '
-                          'ON CREATE SET r.iri = "{0}{3}", r.short_form = "{3}" '
                           'WITH p,r,a '
                           'WHERE p.short_form =~ "FB.*" '
-                          'MATCH (s:site {{iri:"{4}"}}) '
-                          'MERGE (p)-[l:link_to {{subdomain:"{5}"}}]->(s) '
-                          'ON CREATE SET l.iri = "{0}{6}", l.short_form="{6}" '.format(iri_head, paid, pub,
-                                                                                      creator_short, fb_url,
-                                                                                      subdomain, link_short,
-                                                                                      statement, d=d))
+                          'MATCH (s:site {{iri:"{3}"}}) '
+                          'MERGE (p)-[l:link_to {{subdomain:"{4}"}}]->(s) '.format(iri_head, paid, pub,
+                                                                                      fb_url, subdomain,
+                                                                                      statement, fb_sub, d=d))
     else:
         statements.append('MERGE (a:person {{iri:"{0}{1}"}}) ' 
                           'ON CREATE SET a.short_form = "{1}", a.name = "{d[surname]}", a.surname="{d[surname]}" ' 
                           'WITH a '
-                          'MERGE (p:pub {{iri:"{0}{2}"}}) '
-                          'ON CREATE SET p.short_form = "{2}"{7}'
+                          'MERGE (p:pub {{iri:"{3}{6}{2}"}}) '
+                          'ON CREATE SET p.short_form = "{2}"{5}'
                           'WITH a, p '
                           'MERGE (p)-[r:creator {{rank:{d[rank]}}}]->(a) '
-                          'ON CREATE SET r.iri = "{0}{3}", r.short_form = "{3}" '
                           'WITH p,r,a '
                           'WHERE p.short_form =~ "FB.*" '
-                          'MATCH (s:site {{iri:"{4}"}}) '
-                          'MERGE (p)-[l:link_to {{subdomain:"{5}"}}]->(s) '
-                          'ON CREATE SET l.iri = "{0}{6}", l.short_form="{6}" '.format(iri_head, paid, pub,
-                                                                                      creator_short, fb_url,
-                                                                                      subdomain, link_short,
-                                                                                      statement, d=d))
-    print(':', end="")
+                          'MATCH (s:site {{iri:"{3}"}}) '
+                          'MERGE (p)-[l:link_to {{subdomain:"{4}"}}]->(s) '.format(iri_head, paid, pub,
+                                                                                      fb_url, subdomain,
+                                                                                      statement, fb_sub, d=d))
+
 
 statements.append('MATCH (n:pub)-[r:creator]->(a:person) '
                   'WHERE has(n.year) AND has(a.surname) '
@@ -171,7 +163,7 @@ statements.append('MATCH (n:pub)-[r:creator]->(a:person) '
                   'END as microref '
                   'SET n.microref=microref')
 
-nc.commit_list_in_chunks(statements, verbose=True, chunk_length=1000)
+nc.commit_list_in_chunks(statements, verbose=False, chunk_length=1000)
 c.close()
 # Ways to extend:  
 ##  Add authors
