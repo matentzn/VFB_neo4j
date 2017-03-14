@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import psycopg2
-from ..tools import neo4j_connect, chunks
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect, chunks
 #from ..vfb_neo_tools import VFBCypherGen
 import re
 
@@ -171,7 +171,6 @@ class FeatureType(FB2Neo):
                       'natural_transposon_isolate_named': 'SO_0000797',
                       'chromosome_structure_variation' : 'SO_1000183'
                       }
-        # see if there is some alternative query method, as classification is on FB site.
         if ftype == 'gene':
             if re.match('FBal', fbid):
                 return 'SO_0001023'

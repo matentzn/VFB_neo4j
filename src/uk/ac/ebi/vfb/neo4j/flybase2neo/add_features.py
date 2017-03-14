@@ -71,8 +71,6 @@ class AddFeatures(FB2Neo):
                 "SET f.short_form = '%s, label = '%s' " % (                    
                 self.fb_base_URI + fbid, fbid, ) 
 
-   
-
     def update_expressed_features(self):
         query = "SELECT DISTINCT f.uniquename AS fbid, f.name" \
                "FROM feature_expression fe " \

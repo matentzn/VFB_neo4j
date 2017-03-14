@@ -12,23 +12,28 @@ class Test(unittest.TestCase):
 
     def setUp(self):
         self.edge_writer = kb_owl_edge_writer('http://localhost:7474', 'neo4j', 'neo4j')
-        statements = ["MERGE (i1:Individual { 'IRI' : 'Aya' }), " \
-                      "(r1:Relation: { 'IRI' : 'loves' }), (i2:Individual { 'IRI', 'Freddy' })"]
-        # TBA - some type and anon type statments
-        self.edge_writer.nc.commit_list(statements)
+        s = "MERGE (i1:Individual { IRI : 'Aya' })" \
+            "MERGE (r1:Property { IRI : 'loves' }) " \
+            "MERGE (i2:Individual { IRI: 'Freddy' }) "
+        self.edge_writer.nc.commit_list([s])
         pass
 
 
     def tearDown(self):
         # TODO - add some deletions here
-        self.edge_writer.nc(["MATCH (i1:Individual { 'IRI' : 'Aya' })-[r1:Relation: { 'IRI' : 'loves' })]->(i2:Individual { 'IRI', 'Freddy' }) " \
-                             "DELETE r1"])
+        s = "MATCH (i1:Individual { IRI : 'Aya' })-" \
+        "[r1:Property { IRI : 'loves' }]->" \
+        "(i2:Individual { IRI: 'Freddy' }) DELETE i1, r1, i2"
+        self.edge_writer.nc.commit_list([s])
         pass
 
 
     def test_add_fact(self):
         # Check that edge write
-        self.edge_writer.add_fact(s = 'Aya', r = 'loves', o = 'Freddy', edge_annotations = {} )  # TBA - put something in edge annotation
+        self.edge_writer.add_fact(s = 'Aya', r = 'loves', o = 'Freddy', edge_annotations = { 'fu' : 'bar', 
+                                                                                            'bin': ['bash', 'bash'],
+                                                                                            'i' : 1,
+                                                                                            'x' : True })  # TBA - put something in edge annotation
         self.edge_writer.commit() 
         assert self.edge_writer.test_edge_addition() == True  
         self.edge_writer.add_fact(s = 'Aya', r = 'loved', o = 'Freddy', edge_annotations = {} )

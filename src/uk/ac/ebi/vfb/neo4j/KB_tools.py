@@ -38,8 +38,16 @@ class kb_writer (object):
                                       verbose = verbose, 
                                       chunk_length = chunk_length)
         self.statements = []
-        if self.output: self.test_edge_addition()
         return self.output
+    
+    def escape_string(self, strng):
+        if type(strng) == str:
+            strng = re.sub("'", "\\'", strng)
+            strng = re.sub(r'\\', r'\\\\', strng)
+        return strng
+  
+    def _add_textual_attribute(self, var, key, value):
+        return 'SET %s.%s = "%s" ' % (var, key, self.escape_string(value)) # Note arrangement single and double quotes
     
     def _set_attributes_from_dict(self, var, attribute_dict):
         """Generates CYPHER `SET` sub-clauses 
@@ -53,9 +61,11 @@ class kb_writer (object):
             elif type(v) == float:   
                 out += "SET %s.%s = %f " % (var,k,v)                    
             elif type(v) == str:
-                out += "SET %s.%s = '%s' " % (var,k,v)
-            elif type(v) == list:        
-                out += "SET %s.%s = %s " % (var,k, str(v))
+                out += 'SET %s.%s = "%s"' % (var, k, self.escape_string(v))           
+            elif type(v) == list:                        
+                out += 'SET %s.%s = %s ' % (var,k, str([self.escape_string(i) for i in v]))
+            elif type(v) == bool:
+                out += "SET %s.%s = %s " % (var,k, str(v))                
             else: 
                 warnings.warn("Can't use a %s as an attribute value in Cypher. Content :%s" 
                               % (type(v), (str(v))))
@@ -123,11 +133,12 @@ class kb_owl_edge_writer(kb_writer):
         else:
             return True
 
-class owl_import_updater(kb_writer):
+class node_importer(kb_writer):
     """A class wrapping methods for updating imported entities in the KB,
     e.g. from ontologies, FlyBase, CATMAID.
     Constructor: owl_import_updater(endpoint, usr, pwd)
     """
+        
     
     def update_from_obograph(self, obograph_filepath):
         """Update property and class nodes from an OBOgraph file"""
@@ -147,12 +158,13 @@ class owl_import_updater(kb_writer):
         for node in primary_graph['nodes']:
             out = ''
             if node['type'] == 'CLASS':    
-                out = "MERGE (c:Class { iri = '%s'}) " % node['id']
+                out = "MERGE (c:Class { IRI :'%s'}) " % node['id']
             if node['type'] == 'PROPERTY':    
-                out = "MERGE (c:Property { iri = '%s'}) " % node['id']
+                out = "MERGE (c:Property { IRI : '%s'}) " % node['id']
             m = re.findall('.+(#|/)(.+?)$', node['id'])
             out += "SET c.short_form = '%s' " % m[0][1]
-            if 'lbl' in node.keys(): out += "SET c.label = '%s' " % node['lbl']
+            if 'lbl' in node.keys():
+                out += self._add_textual_attribute(key = 'label', value = node['lbl'])         
             if 'meta' in node.keys():
                 if 'deprecated' in node['meta'].keys():
                     out += "SET c.is_obsolete = %s " % node['meta']['deprecated']
@@ -160,38 +172,35 @@ class owl_import_updater(kb_writer):
         ### For effeciency - could try concatenating statements.
             
         
-    def update_from_flybase(self, load_list = []):
-            
-            
+    def update_from_flybase(self, load_list = []):    
             fbc = get_fb_conn()
-            
             cursor = fbc.cursor()
             # STUB
-            query = "SELECT f.uniquename, f.name, f.is_obsolete from feature f" \
+            query = "SELECT f.uniquename, f.name, f.is_obsolete from feature f " \
             "JOIN cvterm typ on f.type_id = typ.cvterm_id " 
             if load_list:
                 load_list_string = "'" + "','".join(load_list) + "'"
-                query += "WHERE f.uniquename in (%s)" % load_list_string
+                query += "WHERE f.uniquename in (%s) " % load_list_string
             else:
                 query += "WHERE typ.name in ('gene', " \
                 "'transposable_element_insertion_site', 'transgenic_transposon') "
             
-            cursor.query(query)
+            cursor.execute(query)
             dc = dict_cursor(cursor)
             for d in dc:
-                out = "MERGE (c:Class:Feature { IRI = '%s'}) " % map_iri('fb') + d['uniquename']
-                out += "SET c.short_form = '%s' " % d['uniquename']
-                out += "SET is_obsolete = '%s' " % bool(d['is_obsolete'])
-            self.statements.append(out)
+                out = 'MERGE (c:Class:Feature { IRI : "%s"}) ' % (map_iri('fb') +  d['uniquename'])
+                out += 'SET c.short_form = "%s" ' % d['uniquename']
+                out += 'SET c.is_obsolete = "%s" ' % bool(d['is_obsolete'])
+                out += self._add_textual_attribute(var = 'c', key = 'label', value = d['name'])         
+                self.statements.append(out)
             cursor.close()
             fbc.close()
     
     def update_current_features_from_FlyBase(self):
-        self.statements.append("MATCH (f:Feature) return f.short_form")
-        current_features = self.nc.commit()    
-    ##              Some proc steps needed here.
-        
-        self.update_from_flybase(load_list = current_features())
+        s = ["MATCH (f:Feature:Class) return f.short_form"]
+        r = self.nc.commit_list(s)    
+        features = [result['row'][0] for result in r[0]['data']]
+        self.update_from_flybase(load_list = features)
 
 
 # Specs for a fb_feature_update

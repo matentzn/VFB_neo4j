@@ -1,6 +1,6 @@
 import sys
 from uk.ac.ebi.vfb.neo4j.flybase2neo.dbtools import dict_cursor, get_fb_conn
-from uk.ac.ebi.vfb.neo4j.tools import neo4j_connect
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect
 import re
 
 """Populate pub data.  Should be run as a final step, once all content added."""

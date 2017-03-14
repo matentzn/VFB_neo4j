@@ -3,7 +3,7 @@ Created on Mar 6, 2017
 
 @author: davidos
 '''
-from .lmb_query_tools import get_conn, dict_cursor
+from .lmb_query_tools import get_conn
 from ..KB_tools import kb_owl_edge_writer
 from ...curie_tools import map_iri
 import sys
@@ -35,8 +35,7 @@ def add_manual_ann(cursor, vfb_ind):
                 "JOIN ontology relont ON (relont.id = rel.ontology_id) " \
                 "WHERE a.text=akv.annotation_text" )
 
-    dc = dict_cursor(cursor)
-    for d in dc:
+    for d in cursor.fetchall():
         if d['rel']:  
             edge_writer.add_anon_type_ax(s = vfb + d['iID'], 
                                          r = d['relBase'] + d['rel'], 

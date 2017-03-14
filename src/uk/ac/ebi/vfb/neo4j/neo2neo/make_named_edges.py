@@ -23,8 +23,9 @@ Created on 4 Feb 2016
 
 nc = neo4j_connect(base_uri = sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
 
-def make_name_edges(typ):
-    statements = ["MATCH (n)-[r:%s]->(m) RETURN n.short_form, r.label, m.short_form" % typ]
+def make_name_edges(typ, s='', o=''):
+    """ typ = edge label.  o, s = subject and object labels. These hould be pre prepended with ':'"""
+    statements = ["MATCH (n%s)-[r:%s]->(m%s) RETURN n.short_form, r.label, m.short_form" % (s, typ, o)]
     r = nc.commit_list(statements)        
     triples = [x['row'] for x in r[0]['data']]
     statements = []
@@ -34,7 +35,7 @@ def make_name_edges(typ):
         rel = re.sub(' ', '_', t[1]) # In case any labels have spaces
         obj = t[2]
         # Merge ensures this doesn't lead to duplicated edges if already present:
-        statements.append("MATCH (n:Class),(m:Class) " \
+        statements.append("MATCH (n),(m) " \
                           "WHERE n.short_form = '%s' and m.short_form = '%s' " \
                           "MERGE (n)-[r:%s { type: '%s' }]->(m)" % (subj, obj, rel, typ)) 
     print("processing %s %s statements" % (len(statements), typ))    
