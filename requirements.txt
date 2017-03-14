@@ -1,4 +1,5 @@
 neo4j-driver
 requests
 pymysql
-pyscopg2
+psycopg2
+
