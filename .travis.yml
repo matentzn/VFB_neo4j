@@ -16,9 +16,8 @@ python:
   - "3.5"
 
 install:
-  - "pip install requests"
-  - "pip install neo4j-driver"
-
+  - pip install -r requirements.txt
+  
 script:
   - curl -u neo4j:neo4j "http://localhost:7474/db/data/"
   - echo $VN
