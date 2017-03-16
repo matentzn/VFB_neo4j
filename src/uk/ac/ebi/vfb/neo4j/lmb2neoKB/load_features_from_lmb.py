@@ -11,6 +11,7 @@ import sys
 c = get_conn(usr = sys.argv[4], pwd = sys.argv[4])
 cursor = c.cursor()
 ni = node_importer(endpoint=sys.argv[1], usr=sys.argv[2], pwd=sys.argv[3])
+ni.add_default_constraint_set(['Feature'])
 
 cursor.execute("SELECT oc.shortFormID FROM owl_class oc " \
                "JOIN ontology o on oc.ontology_id=o.id " \
@@ -19,7 +20,7 @@ cursor.execute("SELECT oc.shortFormID FROM owl_class oc " \
 features = [d['shortFormID'] for d in cursor.fetchall()]
     
 ni.update_from_flybase(load_list = features)
-ni.commit()
+ni.commit(verbose="True")
         
 cursor.close()
 c.close()
