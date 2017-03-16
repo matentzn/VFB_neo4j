@@ -204,10 +204,10 @@ class node_importer(kb_writer):
             r = requests.get(url)
             if r.status_code == 200:
                 obographs = r.json()
-                primary_graph = obographs['graphs'][0]
-            else:
-                warnings.warn('Please provide a file_path or a URL')
-                return False
+                primary_graph = obographs['graphs'][0] # Add a check for success here!
+        else:
+            warnings.warn('Please provide a file_path or a URL')
+            return False
 
         for node in primary_graph['nodes']:
             IRI = node['id']
