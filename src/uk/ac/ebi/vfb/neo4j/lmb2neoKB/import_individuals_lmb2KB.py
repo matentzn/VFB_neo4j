@@ -82,16 +82,16 @@ cursor.execute("SELECT s.shortFormID AS subj_sfid, " \
 
 cypher_facts = []
 
-print("*** Adding %d FACTs ***" % len(cypher_facts))
 
 for d in cursor.fetchall():
     edge_writer.add_fact(s = vfb + d['subj_sfid'],
                          r = d['rBase'] + d['rel_sfid'], 
                          o = vfb + d['obj_sfid'])
 
+print("*** Adding %d FACTs ***" % len(edge_writer.statements))
 
 edge_writer.commit(chunk_length=2000, verbose=True)
-
+edge_writer.test_edge_addition()
 
 
 
@@ -121,7 +121,8 @@ for d in cursor.fetchall():
 
 print( "*** Adding %d Types ***" % len(edge_writer.statements))
     
-edge_writer.commit(chunk_length=2000, verbose=True)
+edge_writer.commit(chunk_length=2000, verbose=True) # chunk length of 5000 was causing requests connection to break
+edge_writer.test_edge_addition()
 
 ## Link to datasets, adding id_in_source to edge, allowing rolling links.
 
@@ -138,6 +139,6 @@ for d in cursor.fetchall():
 
 print("*** Adding %d dataset links ***" % len(statements))
 node_imp.statements.append(statements)
-node_imp.nc.commit_list_in_chunks(chunk_length = 2000, verbose=True)
+node_imp.nc.commit_list_in_chunks(chunk_length = 2000, verbose=True) 
 cursor.close()
 c.close()
