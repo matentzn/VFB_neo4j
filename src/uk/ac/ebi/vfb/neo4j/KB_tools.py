@@ -7,6 +7,7 @@ import warnings
 import re
 import json
 import psycopg2
+import requests
 from .neo4j_tools import neo4j_connect
 from .SQL_tools import get_fb_conn, dict_cursor
 from ..curie_tools import map_iri
@@ -21,6 +22,26 @@ from ..curie_tools import map_iri
 
 # Match statements checks for all relevant entites, including relations if applicable. Implementing methods should 
 # check return values and warn/fail as appropriate if no match.
+
+
+def map_feature_type(self, fbid, ftype):
+    mapping = { 'transgenic_transposon': 'SO_0000796',
+                  'insertion_site': 'SO_0001218', 
+                  'transposable_element_insertion_site': 'SO_0001218',
+                  'natural_transposon_isolate_named': 'SO_0000797',
+                  'chromosome_structure_variation' : 'SO_1000183'
+                  }
+    if ftype == 'gene':
+        if re.match('FBal', fbid):
+            return 'SO_0001023'
+        else:
+            return 'SO_0000704 '
+    elif ftype in mapping.keys():
+        return mapping[ftype]
+    else:
+        return 'SO_0000110' # Sequence feature
+        
+
 
 class kb_writer (object):
       
@@ -39,7 +60,7 @@ class kb_writer (object):
                                       chunk_length = chunk_length)
         self.statements = []
         return self.output
-    
+
     def escape_string(self, strng):
         if type(strng) == str:
             strng = re.sub("'", "\\'", strng)
@@ -61,14 +82,14 @@ class kb_writer (object):
             elif type(v) == float:   
                 out += "SET %s.%s = %f " % (var,k,v)                    
             elif type(v) == str:
-                out += 'SET %s.%s = "%s"' % (var, k, self.escape_string(v))           
+                out += 'SET %s.%s = "%s" ' % (var, k, self.escape_string(v))           
             elif type(v) == list:                        
                 out += 'SET %s.%s = %s ' % (var,k, str([self.escape_string(i) for i in v]))
             elif type(v) == bool:
                 out += "SET %s.%s = %s " % (var,k, str(v))                
             else: 
-                warnings.warn("Can't use a %s as an attribute value in Cypher. Content :%s" 
-                              % (type(v), (str(v))))
+                warnings.warn("Can't use a %s as an attribute value in Cypher. Key %s Value :%s" 
+                              % (type(v), k, (str(v))))
         return out
 
 class kb_owl_edge_writer(kb_writer):
@@ -137,10 +158,33 @@ class node_importer(kb_writer):
     """A class wrapping methods for updating imported entities in the KB,
     e.g. from ontologies, FlyBase, CATMAID.
     Constructor: owl_import_updater(endpoint, usr, pwd)
-    """
-        
+    """   
+    def add_constraints(self, uniqs= {}, indexes = {} ):
+        """Specify addition uniqs and indexes via dicts.
+        { label : [attributes] } """
+        for k,v in uniqs.items():
+            for a in v:
+                self.statements.append("CREATE CONSTRAINT ON (n:%s) ASSERT n.%s IS UNIQUE" % (k,a))
+        for k,v in indexes.items():
+            for a in v:
+                self.statements.append("CREATE INDEX ON :%s(%s)" % (k,a))
+            
+    def add_default_constraint_set(self, labels):
+        """SETS IRI and short_form as uniq, indexes label"""
+        uniqs = {}
+        indexes = {}
+        for l in labels:
+            uniqs[l] = ['IRI', 'short_form']
+            indexes[l] = ['label']
+        self.add_constraints(uniqs, indexes)
+        self.commit()
+            
+    def add_node(self, labels, IRI, attribute_dict = {}):
+        statement = "MERGE (n:%s { IRI: '%s' }) " % ((':'.join(labels)), IRI)
+        statement += self._set_attributes_from_dict(var = 'n', attribute_dict = attribute_dict)
+        self.statements.append(statement)
     
-    def update_from_obograph(self, obograph_filepath):
+    def update_from_obograph(self, file_path = '', url = ''):
         """Update property and class nodes from an OBOgraph file"""
         """(currently does not distinguish OPs from APs!)
         """
@@ -152,27 +196,40 @@ class node_importer(kb_writer):
         
         
         ## Warns if a class in-use has been obsoleted?  - Punt this to other code.
-        f = open(obograph_filepath, 'r')
-        obographs = json.loads(f.read())
-        primary_graph = obographs['graphs'][0]
+        if file_path:   
+            f = open(file_path, 'r')
+            obographs = json.loads(f.read())
+            primary_graph = obographs['graphs'][0]
+        elif url:
+            r = requests.get(url)
+            if r.status_code == 200:
+                obographs = r.json()
+                primary_graph = obographs['graphs'][0]
+            else:
+                warnings.warn('Please provide a file_path or a URL')
+                return False
+
         for node in primary_graph['nodes']:
-            out = ''
-            if node['type'] == 'CLASS':    
-                out = "MERGE (c:Class { IRI :'%s'}) " % node['id']
-            if node['type'] == 'PROPERTY':    
-                out = "MERGE (c:Property { IRI : '%s'}) " % node['id']
+            IRI = node['id']
+            attribute_dict = {}
+            if 'type' in node.keys():
+                if node['type'] == 'CLASS':
+                    labels = ['Class']
+                if node['type'] == 'PROPERTY':    
+                    labels = ['Property']
+                else:
+                    continue
             m = re.findall('.+(#|/)(.+?)$', node['id'])
-            out += "SET c.short_form = '%s' " % m[0][1]
-            if 'lbl' in node.keys():
-                out += self._add_textual_attribute(key = 'label', value = node['lbl'])         
+            attribute_dict['short_form'] =  m[0][1]
+            if 'lbl' in node.keys(): attribute_dict['label']=  node['lbl']
             if 'meta' in node.keys():
                 if 'deprecated' in node['meta'].keys():
-                    out += "SET c.is_obsolete = %s " % node['meta']['deprecated']
-            self.statements.append(out)
+                    attribute_dict['is_obsolete'] = node['meta']['deprecated']
+            self.add_node(labels, IRI, attribute_dict)
         ### For effeciency - could try concatenating statements.
             
         
-    def update_from_flybase(self, load_list = []):    
+    def update_from_flybase(self, load_list = []):            
             fbc = get_fb_conn()
             cursor = fbc.cursor()
             # STUB
@@ -188,11 +245,13 @@ class node_importer(kb_writer):
             cursor.execute(query)
             dc = dict_cursor(cursor)
             for d in dc:
-                out = 'MERGE (c:Class:Feature { IRI : "%s"}) ' % (map_iri('fb') +  d['uniquename'])
-                out += 'SET c.short_form = "%s" ' % d['uniquename']
-                out += 'SET c.is_obsolete = "%s" ' % bool(d['is_obsolete'])
-                out += self._add_textual_attribute(var = 'c', key = 'label', value = d['name'])         
-                self.statements.append(out)
+                IRI = map_iri('fb') +  d['uniquename']
+                attribute_dict = {}
+                attribute_dict['short_form'] = d['uniquename']
+                attribute_dict['is_obsolete'] = bool(d['is_obsolete'])       
+                self.add_node(labels = ['Class', 'Feature'],
+                              IRI = IRI,
+                              attribute_dict = attribute_dict)
             cursor.close()
             fbc.close()
     

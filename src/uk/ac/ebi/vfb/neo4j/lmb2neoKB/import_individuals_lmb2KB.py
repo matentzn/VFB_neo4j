@@ -5,9 +5,8 @@ Created on 13 Aug 2016
 '''
 # A temporary expedient until import from OWL fixed, or we move to a native neo4J implementation of KB
 
-from ..KB_tools import kb_owl_edge_writer
+from ..KB_tools import kb_owl_edge_writer, node_importer
 from ...curie_tools import map_iri
-from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect
 from .lmb_query_tools import get_conn
 import sys
 
@@ -17,45 +16,55 @@ obo = map_iri(curie = 'obo')
 ## Requires ssh tunnel
 c = get_conn('flycircuit', 'flycircuit')
 
-nc = neo4j_connect(base_uri = sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
 edge_writer = kb_owl_edge_writer(endpoint= sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
+node_imp = node_importer(endpoint= sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
+
 cursor = c.cursor()
 
-# Add uniqueness constratints:
+# Add uniqueness constraints:
 
-cypher_constraints = ["CREATE CONSTRAINT ON (i:Individual) ASSERT i.short_form IS UNIQUE",
-                      "CREATE CONSTRAINT ON (i:Individual) ASSERT i.iri IS UNIQUE",
-#                      "CREATE INDEX ON :Individual(ontology_name)",
-                      "CREATE INDEX ON :Individual(label)"]
+print("*** Adding constraints and Indexes***")
 
-nc.commit_list(cypher_constraints)
+node_imp.add_default_constraint_set(['Individual', 'VFB'])
 
 # Add all individuals
 # May need some regex escapes for some ind names?
 
-inds_2_add = []
 cursor.execute("SELECT shortFormID, is_obsolete, label, short_name, gene_name, idid, Name, Age, Putative_birth_time " \
-                "FROM owl_individual oi LEFT OUTER JOIN neuron n ON oi.uuid = n.uuid " \
-               "FROM owl_individual")
+               "FROM owl_individual oi " \
+               "LEFT OUTER JOIN neuron n ON oi.uuid = n.uuid ")
 
+
+
+
+i = 1
+# statement_chunk = []
 for d in cursor.fetchall():
-    statement = "MERGE (i:Individual:VFB { IRI : '%s' } ) "  % vfb + d['short_form']
-    statement += "SET i.label = '%s' " % d['label']
-    statement += "SET i.is_obsolete = '%s'"  % bool(d['is_obsolete'])
+    labels = ['Individual', 'VFB']
+    IRI = vfb + d['shortFormID']
+    ad = {}
+    ad['short_form'] = d['shortFormID']
+    ad['label'] = d['label']
+    ad['is_obsolete'] = bool(int(d['is_obsolete']))
     synonyms = []
     xrefs = []
     if d['short_name']: synonyms.append(d['short_name'])
     if d['gene_name']: synonyms.append(d['gene_name'])
     if d['gene_name']: xrefs.append("FlyCircuit_gene_name:" + d['gene_name'])
-    if d['idid']: xrefs.append("FlyCircuit_idid:" + d['idid'])
-    if d['Name']: xrefs.append("FlyCircuit_name:" + d['Name'])
-    if synonyms: statement += "SET i.synonyms = %s"  % str(synonyms)
-    if xrefs: statement += "SET i.xrefs = %s"  % str(synonyms)
-    inds_2_add.append(statement)
-    
-nc.commit_list(inds_2_add)
+    if d['idid']: xrefs.append("FlyCircuit_idid:" + str(d['idid']))
+    if d['Name']: xrefs.append("FlyCircuit_name:" + d['Name'])  # Need to tweak this to => link to site.  But could do that in Cypher.
+    if synonyms:  ad['synonyms'] = synonyms
+    if synonyms:  ad['xrefs'] = xrefs
+    node_imp.add_node(labels, IRI, ad)
 
-## Add all facts
+        
+print("*** Adding %d Individuals ***" % len(node_imp.statements))
+
+# Slow with current architecture. 
+# Investigated merging statements together, but this would require new var names for each.  Could be done with a simple incrementer
+#  Hmmm - doesn't seem to improve matters.  Should just let it run.
+
+node_imp.commit(chunk_length=5000, verbose=True)
 
 cursor.execute("SELECT s.shortFormID AS subj_sfid, " \
                "s.label AS subj_label,  " \
@@ -73,6 +82,7 @@ cursor.execute("SELECT s.shortFormID AS subj_sfid, " \
 
 cypher_facts = []
 
+print("*** Adding %d FACTs ***" % len(cypher_facts))
 
 for d in cursor.fetchall():
     edge_writer.add_fact(s = vfb + d['subj_sfid'],
@@ -80,7 +90,10 @@ for d in cursor.fetchall():
                          o = vfb + d['obj_sfid'])
 
 
-edge_writer.commit()
+edge_writer.commit(chunk_length=2000, verbose=True)
+
+
+
 
 # Add all types
 
@@ -105,9 +118,10 @@ for d in cursor.fetchall():
         edge_writer.add_anon_type_ax(s = vfb + d['ind'], 
                                      r = d['rBase'] + d['rel_sfid'],
                                       o = obo + d['claz']) # Should really be pulling base from SQL
-        
+
+print( "*** Adding %d Types ***" % len(edge_writer.statements))
     
-edge_writer.commit()
+edge_writer.commit(chunk_length=2000, verbose=True)
 
 ## Link to datasets, adding id_in_source to edge, allowing rolling links.
 
@@ -118,10 +132,12 @@ cursor.execute("SELECT oi.shortFormID, ds.name, oi.id_in_source FROM owl_individ
 statements = []
 
 for d in cursor.fetchall():
-    statements.append("MATCH (c:Individual { short_form : '%s' }), (ds:data_source { name : '%s'})" \
+    statements.append("MATCH (c:Individual { short_form : '%s' }), (ds:data_source { name : '%s'}) " \
                       "MERGE (c)-[:has_source  { id_in_source: '%s' }]->(ds)" 
                       % (d['shortFormID'], d['name']), d['id_in_source'])  # Should make the id_in_source conditional
 
-nc.commit_list_in_chunks(statements, chunk_length = 1000)
+print("*** Adding %d dataset links ***" % len(statements))
+node_imp.statements.append(statements)
+node_imp.nc.commit_list_in_chunks(chunk_length = 2000, verbose=True)
 cursor.close()
 c.close()

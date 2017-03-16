@@ -36,7 +36,7 @@ for d in cursor.fetchall():
     edge_writer.statements.append("MATCH (c:Individual { IRI: '%s' }) " \
                                   "SET c.label = '%s'" 
                                   % (d['cvid'], 
-                                     "cluster " + d['cversion'] + '.' + d['cnum']))
+                                     "cluster " + str(d['cversion']) + '.' + str(d['cnum'])))
     edge_writer.add_named_type_ax(s =vfb + 'VFB_10000005', 
                          o = vfb + d["cvid"])
 #       vfb_ind.label(d["cvid"], "cluster " + str(d["cversion"]) + "." + str(d["cnum"])) # Note ints returned by query need to be coerced into strings.
@@ -46,7 +46,7 @@ for d in cursor.fetchall():
     edge_writer.add_fact(s = d["cvid"], 
                 r = vfb + "C888C3DB-AEFA-447F-BD4C-858DFE33DBE7", 
                 o = vfb + d["evid"]) # UUID for exemplar as a placeholder - awaiting addition to RO
-edge_writer.commit()
+edge_writer.commit(verbose= True)
 
 
 def map_to_clusters(cursor, vfb_ind):
@@ -75,7 +75,7 @@ def map_to_clusters(cursor, vfb_ind):
                   vfb + d['cvid'])        
     cursor.close()
 
-edge_writer.commit()
+edge_writer.commit(verbose=True)
 c.close()
     
     

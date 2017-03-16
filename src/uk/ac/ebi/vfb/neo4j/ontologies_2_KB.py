@@ -8,14 +8,19 @@ from .KB_tools import node_importer
 from ..curie_tools import map_iri
 import sys
 
-ni = node_importer(sys.argv(1), sys.argv(2), sys.argv(3))
+ni = node_importer(sys.argv[1], sys.argv[2], sys.argv[3])
+ni.add_default_constraint_set(['Class', 'Individual'])
 
-bebop = 'http://ontologies.berkeleybop.org'
+bebop = 'http://ontologies.berkeleybop.org/' # This should be a temporary expedient.
+vfb_gh = 'https://raw.githubusercontent.com/VirtualFlyBrain/VFB_owl/master/src/owl/'  # Until next release!
 obo = map_iri('obo')
 vfb = obo + 'fbbt/vfb/'
 ontologies = [bebop + 'fbbt/fbbt-simple.json', 
               bebop + 'so.json', 
-              vfb + 'vfb_ext.json']
+              bebop +  'fbbi.json',
+              vfb_gh + 'vfb_ext.json']
+    
 for o in ontologies:
+    print("Loading %s" % o)
     ni.update_from_obograph(url = o)
     ni.commit()

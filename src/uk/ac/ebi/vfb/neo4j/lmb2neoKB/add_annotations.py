@@ -11,7 +11,6 @@ import sys
 c = get_conn(usr = sys.argv[4], pwd = sys.argv[4])
 cursor = c.cursor()
 edge_writer = kb_owl_edge_writer(endpoint=sys.argv[1], usr=sys.argv[2], pwd=sys.argv[3])
-### Query for cluster inds (version 3)
 vfb = map_iri('vfb')
 obo = map_iri('obo')
 
