@@ -34,8 +34,8 @@ class TestEdgeWriter(unittest.TestCase):
 
     def test_add_fact(self):
 
-        self.edge_writer.add_fact(s = 'Aya', r = 'loves', o = 'Freddy', edge_annotations = { 'fu' : 'bar', 
-                                                                                            'bin': ['bash', 'bash'],
+        self.edge_writer.add_fact(s = 'Aya', r = 'loves', o = 'Freddy', edge_annotations = { 'fu' : "b\a'r", 
+                                                                                            'bin': ['bash', "b\a'sh"],
                                                                                             'i' : 1,                                                                                            'x' : True })  # TBA - put something in edge annotation
         self.edge_writer.commit() 
         assert self.edge_writer.test_edge_addition() == True  
@@ -56,7 +56,7 @@ class TestNodeImporter(unittest.TestCase):
         self.ni = node_importer('http://localhost:7474', 'neo4j', 'neo4j')
     
     def test_update_from_obograph(self):
-        self.ni.update_from_obograph(self, 'resources/fbbt.json')
+        self.ni.update_from_obograph(self, url = 'https://raw.githubusercontent.com/VirtualFlyBrain/VFB_owl/master/src/owl/vfb_ext.owl')
         self.ni.commit()
         
 
