@@ -23,25 +23,8 @@ from ..curie_tools import map_iri
 # Match statements checks for all relevant entites, including relations if applicable. Implementing methods should 
 # check return values and warn/fail as appropriate if no match.
 
-
-def map_feature_type(self, fbid, ftype):
-    mapping = { 'transgenic_transposon': 'SO_0000796',
-                  'insertion_site': 'SO_0001218', 
-                  'transposable_element_insertion_site': 'SO_0001218',
-                  'natural_transposon_isolate_named': 'SO_0000797',
-                  'chromosome_structure_variation' : 'SO_1000183'
-                  }
-    if ftype == 'gene':
-        if re.match('FBal', fbid):
-            return 'SO_0001023'
-        else:
-            return 'SO_0000704 '
-    elif ftype in mapping.keys():
-        return mapping[ftype]
-    else:
-        return 'SO_0000110' # Sequence feature
-        
-
+# TODO: Add lookup for attributes -> Properties.  Ideally this would be with a specific cypher label for APs.
+# May want to follow a prefixed pattern to indicate OWL compatible APs.
 
 class kb_writer (object):
       
@@ -49,6 +32,7 @@ class kb_writer (object):
         self.nc = neo4j_connect(endpoint, usr, pwd)
         self.statements = []
         self.output = []
+        self.properties = set([])
         
     def commit(self, verbose = False, chunk_length = 5000):
         """Commits Cypher statements stored in object.
@@ -95,9 +79,23 @@ class kb_writer (object):
 class kb_owl_edge_writer(kb_writer):
     """A class wrapping methods for updating imported entities in the KB.
     Constructor: kb_owl_edge_writer(endpoint, usr, pwd)
-    """    
-
+    """
+    
+    def check_proprties(self):
+        q = self.nc.commit_list(["MATCH (n) WHERE n.IRI in %s RETURN n.IRI" % (str(list(self.properties)))])
+        if q:
+            in_kb = [x['row'][0] for x in q[0]['data'] if q[0]['data']] # YUK!
+            not_in_kb = self.properties.difference(set(in_kb))
+            if not_in_kb:
+                warnings.warn("Not in KB! %s" % str(not_in_kb))
+                return False
+            else:
+                return True
+        else: 
+            return False
+            
     def _add_related_edge(self, s, r, o, stype, otype, edge_annotations = {}):
+        self.properties.add(r)
         out =  "MATCH (s:%s { IRI:'%s'} ), (rn:Property { IRI: '%s' }), (o:%s { IRI:'%s'} ) " % (
                                                                            stype, s, r, otype, o)
         out += "MERGE (s)-[re:Related { IRI: '%s'}]-(o) " % r
@@ -130,7 +128,7 @@ class kb_owl_edge_writer(kb_writer):
     def add_named_type_ax(self, s,o):
         return "MATCH (s:Individual { IRI: '%s'} ), (o:Class { IRI: '%s'} ) " \
                 "MERGE (s)-[:INSTANCEOF]-(o) " \
-                "RETURN "% (s, o)  
+                "RETURN " % (s, o)  
                 
     def add_anon_subClassOf_ax(self, s,r,o, edge_annotations = {}):
         ### Should probably only support adding individual:individual edges in KB...
@@ -188,12 +186,6 @@ class node_importer(kb_writer):
         """Update property and class nodes from an OBOgraph file"""
         """(currently does not distinguish OPs from APs!)
         """
-        # TODO: add optional arg to open from url.
-        #  Function to update from obographs representation
-        ## Adds new classes if not present
-        ## Updates the labels of existing classes node['lbl']
-        ## Update obsoletion status (node['meta']['deprecated'])
-        
         
         ## Warns if a class in-use has been obsoleted?  - Punt this to other code.
         if file_path:   
