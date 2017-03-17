@@ -35,7 +35,7 @@ for d in cursor.fetchall():
 #       vfb_ind.addNamedIndividual(d["cvid"])
     edge_writer.statements.append("MATCH (c:Individual { IRI: '%s' }) " \
                                   "SET c.label = '%s'" 
-                                  % (d['cvid'], 
+                                  % (vfb + d['cvid'], 
                                      "cluster " + str(d['cversion']) + '.' + str(d['cnum'])))
     edge_writer.add_named_type_ax(s =vfb + 'VFB_10000005', 
                          o = vfb + d["cvid"])
@@ -48,34 +48,31 @@ for d in cursor.fetchall():
                 o = vfb + d["evid"]) # UUID for exemplar as a placeholder - awaiting addition to RO
 edge_writer.commit(verbose= True)
 
-
-def map_to_clusters(cursor, vfb_ind):
-    """Maps fc individuals to clusters"""
-
 #    oe_check_db_and_add("RO_0002351", 'owl_objectProperty', cursor, vfb_ind) #  has_member
 #    oe_check_db_and_add("RO_0002350", 'owl_objectProperty', cursor, vfb_ind)  #  member_of
 
-    cursor.execute("SELECT DISTINCT cind.shortFormID AS cvid, nind.shortFormID AS mvid " \
-                   "FROM clustering cg " \
-                   "JOIN neuron n ON (cg.idid=n.idid) " \
-                   "JOIN owl_individual nind ON (n.uuid=nind.uuid) " \
-                   "JOIN cluster c ON (cg.cluster=c.cluster) " \
-                   "JOIN owl_individual cind ON (c.uuid=cind.uuid) " \
-                   "WHERE c.clusterv = cg.clusterv_id " \
-                   "AND cg.clusterv_id = '3'") # It is essential to set clustering version twice ! (crappy schema...)
+cursor.execute("SELECT DISTINCT cind.shortFormID AS cvid, nind.shortFormID AS mvid " \
+               "FROM clustering cg " \
+               "JOIN neuron n ON (cg.idid=n.idid) " \
+               "JOIN owl_individual nind ON (n.uuid=nind.uuid) " \
+               "JOIN cluster c ON (cg.cluster=c.cluster) " \
+               "JOIN owl_individual cind ON (c.uuid=cind.uuid) " \
+               "WHERE c.clusterv = cg.clusterv_id " \
+               "AND cg.clusterv_id = '3'") # It is essential to set clustering version twice ! (crappy schema...)
 
-    # Now add cluster assertions.  Note - these are declared in both directions as elk cannot cope with inverses.
+# Now add cluster assertions.  Note - these are declared in both directions as elk cannot cope with inverses.
 
-    for d in cursor.fetchall():
-        edge_writer.add_fact(s = vfb + d['cvid'],
-                  obo +"RO_0002351" , 
-                  vfb + d['mvid'])
-        edge_writer.add_fact(s = vfb + d['mvid'],
-                  obo +"RO_0002350" , 
-                  vfb + d['cvid'])        
-    cursor.close()
+for d in cursor.fetchall():
+    edge_writer.add_fact(s = vfb + d['cvid'],
+              r = obo +"RO_0002351" , 
+              o = vfb + d['mvid'])
+    edge_writer.add_fact(s = vfb + d['mvid'],
+              r = obo +"RO_0002350" , 
+              o = vfb + d['cvid'])        
+cursor.close()
 
-edge_writer.commit(verbose=True)
+edge_writer.commit(verbose=True, chunk_length=500)
+edge_writer.test_edge_addition()
 c.close()
     
     

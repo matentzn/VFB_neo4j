@@ -14,7 +14,7 @@ vfb = map_iri(curie = 'vfb')
 obo = map_iri(curie = 'obo')
 
 ## Requires ssh tunnel
-c = get_conn('flycircuit', 'flycircuit')
+c = get_conn(sys.argv[4], sys.argv[4])
 
 edge_writer = kb_owl_edge_writer(endpoint= sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
 node_imp = node_importer(endpoint= sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
@@ -30,12 +30,10 @@ node_imp.add_default_constraint_set(['Individual', 'VFB'])
 # Add all individuals
 # May need some regex escapes for some ind names?
 
-cursor.execute("SELECT shortFormID, is_obsolete, label, short_name, gene_name, idid, Name, Age, Putative_birth_time " \
+cursor.execute("SELECT shortFormID, is_obsolete, label, " \
+               "short_name, gene_name, idid, Name, Age, Putative_birth_time " \
                "FROM owl_individual oi " \
                "LEFT OUTER JOIN neuron n ON oi.uuid = n.uuid ")
-
-
-
 
 i = 1
 # statement_chunk = []
@@ -48,6 +46,8 @@ for d in cursor.fetchall():
     ad['is_obsolete'] = bool(int(d['is_obsolete']))
     synonyms = []
     xrefs = []
+    if d['Putative_birth_time']: ad['comment'] = "Out"
+    if d['Age']: ad['comment'] += "Age: %s" % str(d['Age'])
     if d['short_name']: synonyms.append(d['short_name'])
     if d['gene_name']: synonyms.append(d['gene_name'])
     if d['gene_name']: xrefs.append("FlyCircuit_gene_name:" + d['gene_name'])
@@ -87,6 +87,10 @@ for d in cursor.fetchall():
     edge_writer.add_fact(s = vfb + d['subj_sfid'],
                          r = d['rBase'] + d['rel_sfid'], 
                          o = vfb + d['obj_sfid'])
+    
+if edge_writer.check_proprties():
+    sys.exit("Mising properties in KB")  # Yeh, I know, should be using Try/Except....
+
 
 print("*** Adding %d FACTs ***" % len(edge_writer.statements))
 
@@ -120,7 +124,8 @@ for d in cursor.fetchall():
                                       o = obo + d['claz']) # Should really be pulling base from SQL
 
 print( "*** Adding %d Types ***" % len(edge_writer.statements))
-    
+if edge_writer.check_proprties():
+    sys.exit("Mising properties in KB")  # Yeh, I know, should be using Try/Except....    
 edge_writer.commit(chunk_length=2000, verbose=True) # chunk length of 5000 was causing requests connection to break
 edge_writer.test_edge_addition()
 
@@ -133,9 +138,9 @@ cursor.execute("SELECT oi.shortFormID, ds.name, oi.id_in_source FROM owl_individ
 statements = []
 
 for d in cursor.fetchall():
-    statements.append("MATCH (c:Individual { short_form : '%s' }), (ds:data_source { name : '%s'}) " \
-                      "MERGE (c)-[:has_source  { id_in_source: '%s' }]->(ds)" 
-                      % (d['shortFormID'], d['name']), d['id_in_source'])  # Should make the id_in_source conditional
+    statements.append("MATCH (i:Individual { IRI : '%s' }), (ds:data_source { name : '%s'}) " \
+                      "MERGE (i)-[:has_source  { id_in_source: '%s' }]->(ds)" 
+                      % (vfb + d['shortFormID'], d['name']), d['id_in_source'])  # Should make the id_in_source conditional
 
 print("*** Adding %d dataset links ***" % len(statements))
 node_imp.statements.append(statements)
