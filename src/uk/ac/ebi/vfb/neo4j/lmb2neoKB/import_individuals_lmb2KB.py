@@ -60,11 +60,11 @@ for d in cursor.fetchall():
         
 print("*** Adding %d Individuals ***" % len(node_imp.statements))
 
-# Slow with current architecture. 
-# Investigated merging statements together, but this would require new var names for each.  Could be done with a simple incrementer
-#  Hmmm - doesn't seem to improve matters.  Should just let it run.
-
 node_imp.commit(chunk_length=5000, verbose=True)
+
+# Import object properties:
+
+
 
 cursor.execute("SELECT s.shortFormID AS subj_sfid, " \
                "s.label AS subj_label,  " \
@@ -82,15 +82,19 @@ cursor.execute("SELECT s.shortFormID AS subj_sfid, " \
 
 cypher_facts = []
 
-
+properties = set([])
 for d in cursor.fetchall():
+    properties.add((d['rBase'] + d['rel_sfid'], d['ront_name']))
     edge_writer.add_fact(s = vfb + d['subj_sfid'],
                          r = d['rBase'] + d['rel_sfid'], 
                          o = vfb + d['obj_sfid'])
-    
-if edge_writer.check_proprties():
-    sys.exit("Mising properties in KB")  # Yeh, I know, should be using Try/Except....
 
+for p in properties:
+    node_imp.add_node(labels = ['Property'], 
+                      IRI = p[0],
+                      attribute_dict = { 'label': [1]}
+                      )
+node_imp.commit()
 
 print("*** Adding %d FACTs ***" % len(edge_writer.statements))
 
@@ -107,25 +111,38 @@ cursor.execute("SELECT oc.shortFormID AS claz, " \
                "oop.label AS rel_label, " \
                "ront.baseURI AS rBase, " \
                "ront.short_name AS ront_name " \
+               "cont.base_uri AS cbase " \
                "FROM owl_individual oi " \
                "JOIN individual_type it ON oi.id=it.individual_id " \
                "JOIN owl_type ot ON it.type_id=ot.id " \
                "JOIN owl_class oc ON ot.class = oc.id " \
                "JOIN owl_objectProperty oop ON ot.objectProperty=oop.id " \
-               "JOIN ontology ront ON (oop.ontology_id=ront.id)")
+               "JOIN ontology ront ON (oop.ontology_id=ront.id) " \
+               "JOIN ontology cont ON (oc.ontology_id=ront.id)")
+
+properties = set([])
     
 for d in cursor.fetchall():
     if not d['rel_sfid']:
         edge_writer.add_named_type_ax(s = vfb + d['ind'], 
-                                      o = obo + d['claz']) # Should really be pulling base from SQL
+                                      d['cbase'] + d['claz']) # Should really be pulling base from SQL
     else:
+        properties.add((d['rBase'] + d['rel_sfid'], d['ront_name']))
         edge_writer.add_anon_type_ax(s = vfb + d['ind'], 
                                      r = d['rBase'] + d['rel_sfid'],
-                                      o = obo + d['claz']) # Should really be pulling base from SQL
+                                     d['cbase'] + d['claz']) # Should really be pulling base from SQL
 
 print( "*** Adding %d Types ***" % len(edge_writer.statements))
-if edge_writer.check_proprties():
-    sys.exit("Mising properties in KB")  # Yeh, I know, should be using Try/Except....    
+for p in properties:
+    node_imp.add_node(labels = ['Property'], 
+                      IRI = p[0],
+                      attribute_dict = { 'label': [1]}
+                      )
+node_imp.commit()
+
+#if edge_writer.check_proprties():
+#    sys.exit("Mising properties in KB")  # Yeh, I know, should be using Try/Except....    
+
 edge_writer.commit(chunk_length=2000, verbose=True) # chunk length of 5000 was causing requests connection to break
 edge_writer.test_edge_addition()
 
