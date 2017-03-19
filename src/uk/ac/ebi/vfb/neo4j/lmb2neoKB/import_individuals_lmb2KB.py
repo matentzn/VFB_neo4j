@@ -125,7 +125,7 @@ properties = set([])
 for d in cursor.fetchall():
     if not d['rel_sfid']:
         edge_writer.add_named_type_ax(s = vfb + d['ind'], 
-                                      d['cbase'] + d['claz']) # Should really be pulling base from SQL
+                                      o = d['cbase'] + d['claz']) # Should really be pulling base from SQL
     else:
         properties.add((d['rBase'] + d['rel_sfid'], d['ront_name']))
         edge_writer.add_anon_type_ax(s = vfb + d['ind'], 
