@@ -5,9 +5,9 @@ Created on 13 Aug 2016
 '''
 # A temporary expedient until import from OWL fixed, or we move to a native neo4J implementation of KB
 
-from ..KB_tools import kb_owl_edge_writer, node_importer
-from ...curie_tools import map_iri
-from .lmb_query_tools import get_conn
+from uk.ac.ebi.vfb.neo4j.KB_tools import kb_owl_edge_writer, node_importer
+from uk.ac.ebi.vfb.curie_tools import map_iri
+from uk.ac.ebi.vfb.neo4j.lmb2neoKB.lmb_query_tools import get_conn
 import sys
 
 vfb = map_iri(curie = 'vfb')
