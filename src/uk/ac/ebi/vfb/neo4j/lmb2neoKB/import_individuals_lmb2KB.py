@@ -130,7 +130,7 @@ for d in cursor.fetchall():
         properties.add((d['rBase'] + d['rel_sfid'], d['ront_name']))
         edge_writer.add_anon_type_ax(s = vfb + d['ind'], 
                                      r = d['rBase'] + d['rel_sfid'],
-                                     d['cbase'] + d['claz']) # Should really be pulling base from SQL
+                                     o = d['cbase'] + d['claz']) # Should really be pulling base from SQL
 
 print( "*** Adding %d Types ***" % len(edge_writer.statements))
 for p in properties:
