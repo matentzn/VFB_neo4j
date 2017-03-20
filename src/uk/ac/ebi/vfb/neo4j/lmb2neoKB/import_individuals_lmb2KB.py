@@ -111,7 +111,7 @@ cursor.execute("SELECT oc.shortFormID AS claz, " \
                "oop.label AS rel_label, " \
                "ront.baseURI AS rBase, " \
                "ront.short_name AS ront_name, " \
-               "cont.base_uri AS cbase " \
+               "cont.baseURI AS cbase " \
                "FROM owl_individual oi " \
                "JOIN individual_type it ON oi.id=it.individual_id " \
                "JOIN owl_type ot ON it.type_id=ot.id " \
