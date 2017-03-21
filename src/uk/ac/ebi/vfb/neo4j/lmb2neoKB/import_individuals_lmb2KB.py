@@ -118,7 +118,7 @@ cursor.execute("SELECT oc.shortFormID AS claz, " \
                "JOIN owl_class oc ON ot.class = oc.id " \
                "JOIN owl_objectProperty oop ON ot.objectProperty=oop.id " \
                "JOIN ontology ront ON (oop.ontology_id=ront.id) " \
-               "JOIN ontology cont ON (oc.ontology_id=ront.id)")
+               "JOIN ontology cont ON (oc.ontology_id=cont.id)")
 
 properties = set([])
     
