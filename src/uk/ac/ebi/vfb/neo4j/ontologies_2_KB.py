@@ -4,8 +4,8 @@ Created on Mar 15, 2017
 @author: davidos
 '''
 
-from .KB_tools import node_importer
-from ..curie_tools import map_iri
+from uk.ac.ebi.vfb.neo4j.KB_tools import node_importer
+from uk.ac.ebi.vfb.curie_tools import map_iri
 import sys
 
 ni = node_importer(sys.argv[1], sys.argv[2], sys.argv[3])
