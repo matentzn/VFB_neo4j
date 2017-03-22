@@ -160,7 +160,6 @@ for d in cursor.fetchall():
                       % (vfb + d['shortFormID'], d['name'], d['id_in_source']))  # Should make the id_in_source conditional
 
 print("*** Adding %d dataset links ***" % len(statements))
-node_imp.statements.append(statements)
-node_imp.nc.commit_list_in_chunks(chunk_length = 2000, verbose=True) 
+node_imp.nc.commit_list_in_chunks(statements = statements, chunk_length = 2000, verbose=True) 
 cursor.close()
 c.close()
