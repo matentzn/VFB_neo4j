@@ -187,7 +187,6 @@ class node_importer(kb_writer):
         """(currently does not distinguish OPs from APs!)
         """
         
-        ## Warns if a class in-use has been obsoleted?  - Punt this to other code.
         if file_path:   
             f = open(file_path, 'r')
             obographs = json.loads(f.read())
@@ -207,7 +206,7 @@ class node_importer(kb_writer):
             if 'type' in node.keys():
                 if node['type'] == 'CLASS':
                     labels = ['Class']
-                if node['type'] == 'PROPERTY':    
+                elif node['type'] == 'PROPERTY':
                     labels = ['Property']
                 else:
                     continue
