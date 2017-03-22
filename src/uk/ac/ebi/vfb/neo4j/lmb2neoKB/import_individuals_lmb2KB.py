@@ -156,8 +156,8 @@ statements = []
 
 for d in cursor.fetchall():
     statements.append("MATCH (i:Individual { IRI : '%s' }), (ds:data_source { name : '%s'}) " \
-                      "MERGE (i)-[:has_source  { id_in_source: '%s' }]->(ds)" 
-                      % (vfb + d['shortFormID'], d['name']), d['id_in_source'])  # Should make the id_in_source conditional
+                      "MERGE (i)-[:has_source  { id_in_source: '%s' }]->(ds)" \
+                      % (vfb + d['shortFormID'], d['name']), d['id_in_source']))  # Should make the id_in_source conditional
 
 print("*** Adding %d dataset links ***" % len(statements))
 node_imp.statements.append(statements)
