@@ -4,9 +4,9 @@ Created on Mar 6, 2017
 @author: davidos
 '''
 
-from .lmb_query_tools import get_conn
-from ..KB_tools import kb_owl_edge_writer
-from ...curie_tools import map_iri
+from uk.ac.ebi.vfb.neo4j.lmb2neoKB.lmb_query_tools import get_conn
+from uk.ac.ebi.vfb.neo4j.KB_tools import kb_owl_edge_writer
+from uk.ac.ebi.vfb.curie_tools import map_iri
 import sys
 
 c = get_conn(usr = sys.argv[4], pwd = sys.argv[4])
@@ -26,25 +26,25 @@ cursor.execute("SELECT DISTINCT ind.shortFormID as cvid, c.cluster as cnum, " \
                "WHERE cg.clusterv_id = c.clusterv " \
                "AND ind.type_for_def  = 'cluster' " \
                "AND c.clusterv = '3'")
-    
+
 # But are Individuals already present?
 # Yes, but they don't have names!  These need to be rolled as version.cluster.
 # Consider: Adding clustering version as attribute.
-    
+
 for d in cursor.fetchall():
 #       vfb_ind.addNamedIndividual(d["cvid"])
     edge_writer.statements.append("MATCH (c:Individual { IRI: '%s' }) " \
-                                  "SET c.label = '%s'" 
-                                  % (vfb + d['cvid'], 
+                                  "SET c.label = '%s'"
+                                  % (vfb + d['cvid'],
                                      "cluster " + str(d['cversion']) + '.' + str(d['cnum'])))
-    edge_writer.add_named_type_ax(s =vfb + 'VFB_10000005', 
+    edge_writer.add_named_type_ax(s =vfb + 'VFB_10000005',
                          o = vfb + d["cvid"])
 #       vfb_ind.label(d["cvid"], "cluster " + str(d["cversion"]) + "." + str(d["cnum"])) # Note ints returned by query need to be coerced into strings.
-    edge_writer.add_fact(s = vfb + d["evid"], 
+    edge_writer.add_fact(s = vfb + d["evid"],
                 r = vfb + "c099d9d6-4ef3-11e3-9da7-b1ad5291e0b0",
                 o = vfb + d["cvid"]) # UUID for exemplar as a placeholder - awaiting addition to RO
-    edge_writer.add_fact(s = d["cvid"], 
-                r = vfb + "C888C3DB-AEFA-447F-BD4C-858DFE33DBE7", 
+    edge_writer.add_fact(s = d["cvid"],
+                r = vfb + "C888C3DB-AEFA-447F-BD4C-858DFE33DBE7",
                 o = vfb + d["evid"]) # UUID for exemplar as a placeholder - awaiting addition to RO
 edge_writer.commit(verbose= True)
 
@@ -64,20 +64,13 @@ cursor.execute("SELECT DISTINCT cind.shortFormID AS cvid, nind.shortFormID AS mv
 
 for d in cursor.fetchall():
     edge_writer.add_fact(s = vfb + d['cvid'],
-              r = obo +"RO_0002351" , 
+              r = obo +"RO_0002351" ,
               o = vfb + d['mvid'])
     edge_writer.add_fact(s = vfb + d['mvid'],
-              r = obo +"RO_0002350" , 
-              o = vfb + d['cvid'])        
+              r = obo +"RO_0002350" ,
+              o = vfb + d['cvid'])
 cursor.close()
 
 edge_writer.commit(verbose=True, chunk_length=500)
 edge_writer.test_edge_addition()
 c.close()
-    
-    
-
-    
-    
-    
-    

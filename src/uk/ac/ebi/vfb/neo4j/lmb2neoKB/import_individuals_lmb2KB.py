@@ -5,9 +5,9 @@ Created on 13 Aug 2016
 '''
 # A temporary expedient until import from OWL fixed, or we move to a native neo4J implementation of KB
 
-from ..KB_tools import kb_owl_edge_writer, node_importer
-from ...curie_tools import map_iri
-from .lmb_query_tools import get_conn
+from uk.ac.ebi.vfb.neo4j.KB_tools import kb_owl_edge_writer, node_importer
+from uk.ac.ebi.vfb.curie_tools import map_iri
+from uk.ac.ebi.vfb.neo4j.lmb2neoKB.lmb_query_tools import get_conn
 import sys
 
 vfb = map_iri(curie = 'vfb')
@@ -110,27 +110,27 @@ cursor.execute("SELECT oc.shortFormID AS claz, " \
                "oop.shortFormID AS rel_sfid, " \
                "oop.label AS rel_label, " \
                "ront.baseURI AS rBase, " \
-               "ront.short_name AS ront_name " \
-               "cont.base_uri AS cbase " \
+               "ront.short_name AS ront_name, " \
+               "cont.baseURI AS cbase " \
                "FROM owl_individual oi " \
                "JOIN individual_type it ON oi.id=it.individual_id " \
                "JOIN owl_type ot ON it.type_id=ot.id " \
                "JOIN owl_class oc ON ot.class = oc.id " \
                "JOIN owl_objectProperty oop ON ot.objectProperty=oop.id " \
                "JOIN ontology ront ON (oop.ontology_id=ront.id) " \
-               "JOIN ontology cont ON (oc.ontology_id=ront.id)")
+               "JOIN ontology cont ON (oc.ontology_id=cont.id)")
 
 properties = set([])
     
 for d in cursor.fetchall():
     if not d['rel_sfid']:
         edge_writer.add_named_type_ax(s = vfb + d['ind'], 
-                                      d['cbase'] + d['claz']) # Should really be pulling base from SQL
+                                      o = d['cbase'] + d['claz']) # Should really be pulling base from SQL
     else:
         properties.add((d['rBase'] + d['rel_sfid'], d['ront_name']))
         edge_writer.add_anon_type_ax(s = vfb + d['ind'], 
                                      r = d['rBase'] + d['rel_sfid'],
-                                     d['cbase'] + d['claz']) # Should really be pulling base from SQL
+                                     o = d['cbase'] + d['claz']) # Should really be pulling base from SQL
 
 print( "*** Adding %d Types ***" % len(edge_writer.statements))
 for p in properties:
@@ -156,11 +156,10 @@ statements = []
 
 for d in cursor.fetchall():
     statements.append("MATCH (i:Individual { IRI : '%s' }), (ds:data_source { name : '%s'}) " \
-                      "MERGE (i)-[:has_source  { id_in_source: '%s' }]->(ds)" 
-                      % (vfb + d['shortFormID'], d['name']), d['id_in_source'])  # Should make the id_in_source conditional
+                      "MERGE (i)-[:has_source  { id_in_source: '%s' }]->(ds)"
+                      % (vfb + d['shortFormID'], d['name'], d['id_in_source']))  # Should make the id_in_source conditional
 
 print("*** Adding %d dataset links ***" % len(statements))
-node_imp.statements.append(statements)
-node_imp.nc.commit_list_in_chunks(chunk_length = 2000, verbose=True) 
+node_imp.nc.commit_list_in_chunks(statements = statements, chunk_length = 2000, verbose=True) 
 cursor.close()
 c.close()

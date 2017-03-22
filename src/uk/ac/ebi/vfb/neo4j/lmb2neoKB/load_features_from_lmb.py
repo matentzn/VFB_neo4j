@@ -4,8 +4,8 @@ Created on Mar 15, 2017
 @author: davidos
 '''
 
-from .lmb_query_tools import get_conn
-from ..KB_tools import node_importer
+from uk.ac.ebi.vfb.neo4j.lmb2neoKB.lmb_query_tools import get_conn
+from uk.ac.ebi.vfb.neo4j.KB_tools import node_importer
 import sys
 
 c = get_conn(usr = sys.argv[4], pwd = sys.argv[4])
