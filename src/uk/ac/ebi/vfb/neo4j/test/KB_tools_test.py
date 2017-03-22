@@ -19,7 +19,7 @@ class TestEdgeWriter(unittest.TestCase):
         s.append("MERGE (i1:Individual { IRI : 'Aya' }) " \
             "MERGE (r1:Property { IRI : 'daughter_of' }) " \
             "MERGE (i2:Individual { IRI: 'David' }) ")
-        self.edge_writer.nc.commit_list([s])
+        self.edge_writer.nc.commit_list(s)
         pass
 
 
@@ -28,7 +28,7 @@ class TestEdgeWriter(unittest.TestCase):
         s = "MATCH (i1:Individual { IRI : 'Aya' })-" \
         "[r1:Property { IRI : 'loves' }]->" \
         "(i2:Individual { IRI: 'Freddy' }) DELETE i1, r1, i2"
-        self.edge_writer.nc.commit_list([s])
+        self.edge_writer.nc.commit_list(s)
         pass
 
 
