@@ -3,9 +3,9 @@ Created on Mar 6, 2017
 
 @author: davidos
 '''
-from .lmb_query_tools import get_conn
-from ..KB_tools import kb_owl_edge_writer
-from ...curie_tools import map_iri
+from uk.ac.ebi.vfb.neo4j.lmb2neoKB.lmb_query_tools import get_conn
+from uk.ac.ebi.vfb.neo4j.KB_tools import kb_owl_edge_writer
+from uk.ac.ebi.vfb.curie_tools import map_iri
 import sys
 
 c = get_conn(usr = sys.argv[4], pwd = sys.argv[4])
