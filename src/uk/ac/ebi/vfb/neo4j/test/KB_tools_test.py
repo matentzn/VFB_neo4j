@@ -19,15 +19,20 @@ class TestEdgeWriter(unittest.TestCase):
         s.append("MERGE (i1:Individual { IRI : 'Aya' }) " \
             "MERGE (r1:Property { IRI : 'daughter_of' }) " \
             "MERGE (i2:Individual { IRI: 'David' }) ")
+        s.append("MERGE (s:Class { IRI: 'Person' } ) ")
+        s.append("MERGE (s:Class { IRI: 'Toy' } ) " )                
         self.edge_writer.nc.commit_list(s)
         pass
 
 
     def tearDown(self):
         # TODO - add some deletions here
-        s = "MATCH (i1:Individual { IRI : 'Aya' })-" \
+        s = ["MATCH (i1:Individual { IRI : 'Aya' })-" \
         "[r1:Property { IRI : 'loves' }]->" \
-        "(i2:Individual { IRI: 'Freddy' }) DELETE i1, r1, i2"
+        "(i2:Individual { IRI: 'Freddy' }) DELETE i1, r1, i2"]
+        s.append("MATCH (i1:Individual { IRI : 'Aya' })-" \
+        "[r1:Property { IRI : 'loves' }]->" \
+        "(i2:Individual { IRI: 'Freddy' }) DELETE i1, r1, i2")       
         self.edge_writer.nc.commit_list(s)
         pass
 
@@ -42,9 +47,8 @@ class TestEdgeWriter(unittest.TestCase):
         self.edge_writer.commit() 
         assert self.edge_writer.test_edge_addition() == True  
         self.edge_writer.add_fact(s = 'Aya', r = 'loved', o = 'Freddy', edge_annotations = {} )
-        assert self.edge_writer.check_proprties() == False      
         self.edge_writer.commit()
-        assert self.edge_writer.test_edge_addition() == False  
+        assert self.edge_writer.test_edge_addition() == False
         # Add test of added content?
         
         
@@ -52,8 +56,10 @@ class TestEdgeWriter(unittest.TestCase):
         pass
     
     def test_add_named_type_ax(self):
-        pass
-
+        self.edge_writer.add_named_type_ax(s = 'Aya', o = 'Person')
+        self.edge_writer.commit()
+        assert self.edge_writer.test_edge_addition() == True
+        
 class TestNodeImporter(unittest.TestCase):
 
     def setUp(self):

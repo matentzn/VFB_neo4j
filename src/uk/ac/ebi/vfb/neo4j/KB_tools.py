@@ -126,9 +126,10 @@ class kb_owl_edge_writer(kb_writer):
                                edge_annotations = edge_annotations) 
         
     def add_named_type_ax(self, s,o):
-        return "MATCH (s:Individual { IRI: '%s'} ), (o:Class { IRI: '%s'} ) " \
-                "MERGE (s)-[:INSTANCEOF]-(o) " \
-                "RETURN " % (s, o)  
+        self.statements.append(
+                               "MATCH (s:Individual { IRI: '%s'} ), (o:Class { IRI: '%s'} ) " \
+                               "MERGE (s)-[:INSTANCEOF]-(o) " \
+                               "RETURN '%s', '%s'" % (s, o, s, o))
                 
     def add_anon_subClassOf_ax(self, s,r,o, edge_annotations = {}):
         ### Should probably only support adding individual:individual edges in KB...
