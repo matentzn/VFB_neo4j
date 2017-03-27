@@ -92,8 +92,8 @@ for d in cursor.fetchall():
 for p in properties:
     node_imp.add_node(labels = ['Property'], 
                       IRI = p[0],
-                      attribute_dict = { 'label': [1]}
-                      )
+                      attribute_dict = { 'label': p[1]}
+                      )  # But note - this will overwrite labels if notes already in place!
 node_imp.commit()
 
 print("*** Adding %d FACTs ***" % len(edge_writer.statements))
@@ -136,7 +136,7 @@ print( "*** Adding %d Types ***" % len(edge_writer.statements))
 for p in properties:
     node_imp.add_node(labels = ['Property'], 
                       IRI = p[0],
-                      attribute_dict = { 'label': [1]}
+                      attribute_dict = { 'label': p[1]}
                       )
 node_imp.commit()
 
