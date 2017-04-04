@@ -46,6 +46,7 @@ for d in cursor.fetchall():
     ad['is_obsolete'] = bool(int(d['is_obsolete']))
     synonyms = []
     xrefs = []
+    if d['label']: ad['label'] = d['label']
     if d['Putative_birth_time']: ad['comment'] = "Out"
     if d['Age']: ad['comment'] += "Age: %s" % str(d['Age'])
     if d['short_name']: synonyms.append(d['short_name'])
@@ -62,7 +63,6 @@ print("*** Adding %d Individuals ***" % len(node_imp.statements))
 
 node_imp.commit(chunk_length=5000, verbose=True)
 
-# Import object properties:
 
 
 
