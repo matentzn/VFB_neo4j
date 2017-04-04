@@ -82,19 +82,21 @@ cursor.execute("SELECT s.shortFormID AS subj_sfid, " \
 
 cypher_facts = []
 
-properties = set([])
+# properties = set([])
 for d in cursor.fetchall():
-    properties.add((d['rBase'] + d['rel_sfid'], d['ront_name']))
+#     properties.add((d['rBase'] + d['rel_sfid'], d['rel_label']))
     edge_writer.add_fact(s = vfb + d['subj_sfid'],
                          r = d['rBase'] + d['rel_sfid'], 
                          o = vfb + d['obj_sfid'])
 
-for p in properties:
-    node_imp.add_node(labels = ['Property'], 
-                      IRI = p[0],
-                      attribute_dict = { 'label': p[1]}
-                      )  # But note - this will overwrite labels if notes already in place!
-node_imp.commit()
+# Shouldn't really need this as all properties should be in Onts!
+
+# for p in properties:
+#     node_imp.add_node(labels = ['Property'], 
+#                       IRI = p[0],
+#                       attribute_dict = { 'label': p[1]}
+#                       )  # But note - this will overwrite labels if notes already in place!
+# node_imp.commit()
 
 print("*** Adding %d FACTs ***" % len(edge_writer.statements))
 
@@ -120,25 +122,27 @@ cursor.execute("SELECT oc.shortFormID AS claz, " \
                "JOIN ontology ront ON (oop.ontology_id=ront.id) " \
                "JOIN ontology cont ON (oc.ontology_id=cont.id)")
 
-properties = set([])
+# properties = set([])
     
 for d in cursor.fetchall():
     if not d['rel_sfid']:
         edge_writer.add_named_type_ax(s = vfb + d['ind'], 
                                       o = d['cbase'] + d['claz']) # Should really be pulling base from SQL
     else:
-        properties.add((d['rBase'] + d['rel_sfid'], d['ront_name']))
+#         properties.add((d['rBase'] + d['rel_sfid'], d['rel_label']))
         edge_writer.add_anon_type_ax(s = vfb + d['ind'], 
                                      r = d['rBase'] + d['rel_sfid'],
                                      o = d['cbase'] + d['claz']) # Should really be pulling base from SQL
 
 print( "*** Adding %d Types ***" % len(edge_writer.statements))
-for p in properties:
-    node_imp.add_node(labels = ['Property'], 
-                      IRI = p[0],
-                      attribute_dict = { 'label': p[1]}
-                      )
-node_imp.commit()
+
+# Shouldn't really need this as all properties should be in Ontologies used to gen nodes!
+# for p in properties:
+#     node_imp.add_node(labels = ['Property'], 
+#                       IRI = p[0],
+#                       attribute_dict = { 'label': p[1]}
+#                       )
+# node_imp.commit()
 
 #if edge_writer.check_proprties():
 #    sys.exit("Mising properties in KB")  # Yeh, I know, should be using Try/Except....    

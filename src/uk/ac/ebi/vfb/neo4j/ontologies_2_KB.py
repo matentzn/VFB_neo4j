@@ -23,4 +23,10 @@ ontologies = [bebop + 'fbbt/fbbt-simple.json',
 for o in ontologies:
     print("Loading %s" % o)
     ni.update_from_obograph(url = o)
+    # Adding this by hand for now because of dumb, infuriating bug in obograph gen.
+    ni.add_node(labels = ['Property'], 
+                IRI = 'http://xmlns.com/foaf/0.1/depicts', 
+                attribute_dict = { 'label' : 'depicts', 
+                                  'short_form' : 'depicts' }
+                )
     ni.commit()

@@ -49,12 +49,12 @@ class neo4j_connect():
                                  % self.base_uri, auth = (self.usr, self.pwd) ,
                                   data = json.dumps(payload))
         if self.rest_return_check(response):
-            return response.json()['results'] # May be worth returning more in order to report errors.
+            return response.json()['results']
         else:
             return False
         
         
-    def commit_list_in_chunks(self, statements, verbose=False, chunk_length=100):
+    def commit_list_in_chunks(self, statements, verbose=False, chunk_length=1000):
         """Commit a list of statements to neo4J DB via REST API, split into chunks.
         cypher_statments = list of cypher statements as strings
         base_uri = base URL for neo4J DB

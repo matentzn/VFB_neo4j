@@ -6,7 +6,7 @@ Created on Mar 6, 2017
 import warnings
 import re
 import json
-import psycopg2
+#import psycopg2
 import requests
 from .neo4j_tools import neo4j_connect
 from .SQL_tools import get_fb_conn, dict_cursor
@@ -256,7 +256,7 @@ class node_importer(kb_writer):
 
 # Specs for a fb_feature_update
 ## Pull current feature nodes from DB
- #   query = "SELECT uniquename, name, is_obsolete from feature"
+#   query = "SELECT uniquename, name, is_obsolete from feature"
 
 #class fb_feature_update(kb_writer):   
     
