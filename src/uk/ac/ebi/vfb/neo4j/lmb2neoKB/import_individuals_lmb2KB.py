@@ -152,16 +152,17 @@ edge_writer.test_edge_addition()
 
 ## Link to datasets, adding id_in_source to edge, allowing rolling links.
 
-cursor.execute("SELECT oi.shortFormID, ds.name, oi.id_in_source FROM owl_individual oi " \
+cursor.execute("SELECT oi.shortFormID, ds.name, oi.ID_in_source FROM owl_individual oi " \
                "JOIN data_source ds ON oi.source_id = ds.id " \
-               "WHERE oi.shortFormID like 'VFBc\_%'")  # Only link channels to datasets.
+               "WHERE oi.shortFormID like 'VFB\_%'")  # Only link anatomy to datasets.
 
 statements = []
 
 for d in cursor.fetchall():
     statements.append("MATCH (i:Individual { IRI : '%s' }), (ds:data_source { name : '%s'}) " \
                       "MERGE (i)-[:has_source  { id_in_source: '%s' }]->(ds)"
-                      % (vfb + d['shortFormID'], d['name'], d['id_in_source']))  # Should make the id_in_source conditional
+                      % (vfb + d['shortFormID'], d['name'], d['ID_in_source']))  
+    # Decided not to make the id_in_source conditional
 
 print("*** Adding %d dataset links ***" % len(statements))
 node_imp.nc.commit_list_in_chunks(statements = statements, chunk_length = 2000, verbose=True) 
