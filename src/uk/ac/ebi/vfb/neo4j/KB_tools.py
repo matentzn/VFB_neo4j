@@ -239,6 +239,7 @@ class node_importer(kb_writer):
             for d in dc:
                 IRI = map_iri('fb') +  d['uniquename']
                 attribute_dict = {}
+                attribute_dict['label'] = d['name']               
                 attribute_dict['short_form'] = d['uniquename']
                 attribute_dict['is_obsolete'] = bool(d['is_obsolete'])       
                 self.add_node(labels = ['Class', 'Feature'],
