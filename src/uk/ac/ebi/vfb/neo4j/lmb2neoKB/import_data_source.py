@@ -19,6 +19,9 @@ from uk.ac.ebi.vfb.neo4j.lmb2neoKB.lmb_query_tools import get_conn
 nc = neo4j_connect(base_uri=sys.argv[1], usr=sys.argv[2], pwd=sys.argv[3])
 c = get_conn(sys.argv[4], sys.argv[4])
 
+statements.append("CREATE CONSTRAINT ON (ds:data_set) ASSERT ds.name IS UNIQUE")
+statements.append("CREATE CONSTRAINT ON (p:pub) ASSERT p.PMID IS UNIQUE")
+nc.commit_list(statements)
 
 cursor = c.cursor()
 cursor.execute("SELECT * FROM data_source")
@@ -42,9 +45,7 @@ for d in cursor.fetchall():
     statements.append(statement)
 nc.commit_list(statements)
 
-statements.append("CREATE CONSTRAINT ON (ds:data_set) ASSERT ds.name IS UNIQUE")
-statements.append("CREATE CONSTRAINT ON (p:pub) ASSERT p.PMID IS UNIQUE")
-nc.commit_list(statements)
+
 
 
         
