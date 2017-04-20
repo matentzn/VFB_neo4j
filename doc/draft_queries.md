@@ -18,6 +18,7 @@ RETURN member
 ### Anatomical classe results page query
 
 QUERY STATUS: TESTED, WORKS
+
 TBA: Needs to pull back tempate, but waiting on tweaks to schema.
 
 ```cql
