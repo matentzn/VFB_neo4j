@@ -17,11 +17,8 @@ RETURN member
 
 ### Anatomical results page query
 
-The IN clause should be populated by an appropriate number of results.
-1 query (20 results?) => first page 
-Second query in background => complete results table
-
 QUERY STATUS: TESTED, WORKS
+TBA: Needs to pull back tempate, but waiting on tweaks to schema.
 
 ```cql
 MATCH (n:VFB:Class) WHERE n.short_form IN 
@@ -44,6 +41,20 @@ MATCH (n)-[r:has_reference]->(p:pub) with n,inds,COLLECT (DISTINCT { FlyBase: p.
 RETURN n.label AS class_label, n.description as class_def, n.short_form AS class_id, n.synonym,
 pubs, inds[1..6] as inds
 ```
+
+### Anatomical Individuals results page:
+
+```cql
+MATCH (n:VFB:Individual) WHERE n.short_form IN 
+['VFB_00001000', 'VFB_00001002', 'VFB_00001003'] 
+WITH n 
+MATCH (image:Individual)-[:Related { label: 'has_signal_channel'}]->(channel:Individual)-[:Related { label: 'depicts'}]->(n)-[:INSTANCEOF]->(typ:Class)
+RETURN n.label AS anat_ind_label, n.description as anat_ind_def, n.short_form AS anat_ind_id, n.synonym AS anat_ind_syn,  
+COLLECT (DISTINCT { type_label: typ.label, type_id: typ.short_form}) AS types, image.short_form as image_id
+```
+
+TODO: Extend to templates and source, pub(s) once new schema is in place.
+
 
 ### Generating trees for a given template.
 
