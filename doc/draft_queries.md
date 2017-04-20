@@ -23,20 +23,19 @@ Second query in background => complete results table
 
 QUERY STATUS: TESTED, WORKS
 
-~~~~~~~~~~.cql
-
+```cql
 MATCH (n:VFB:Class) WHERE n.short_form IN 
-['FBbt_00007405', 'FBbt_00007422', 'FBbt_00007225', 'FBbt_00100477'] 
+['FBbt_00111464', 'FBbt_00007422', 'FBbt_00007225', 'FBbt_00100477'] 
 WITH n 
-OPTIONAL MATCH (n)<-[:SUBCLASSOF|INSTANCEOF*..]-(a:Individual)
+OPTIONAL MATCH (n)<-[:SUBCLASSOF|INSTANCEOF*1..4]-(a:Individual)
 <-[:Related { label: 'depicts'}]-(c:Individual)
--[:Related { label: 'has_signal_channel'}]->(image:Individual), 
-(n)-[:has_reference]->(p:pub)
-RETURN n.label AS class_label, n.definition as class_def, n.short_form AS class_id
-COLLECT (DISTINCT { FlyBase: p.FlyBase, miniref:  p.miniref}) AS pubs, 
+<-[:Related { label: 'has_signal_channel'}]-(image:Individual) with n,a, image
+MATCH (n)-[r:has_reference]->(p:pub)
+RETURN n.label AS class_label, n.description as class_def, n.short_form AS class_id, n.synonym,
+COLLECT (DISTINCT { FlyBase: p.FlyBase, miniref:  p.miniref}) AS pubs,  
 COLLECT (DISTINCT { anat_ind_name: a.label, image_id: image.short_form}) AS inds
 
-~~~~~~~~~~~
+```
 
 ### Generating trees for a given template.
 
