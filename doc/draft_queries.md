@@ -26,21 +26,21 @@ MATCH (n:VFB:Class) WHERE n.short_form IN
 WITH n 
 OPTIONAL MATCH (n)<-[:SUBCLASSOF|INSTANCEOF*1..4]-(a:Individual)
 <-[:Related { label: 'depicts'}]-(c:Individual)
-<-[:Related { label: 'has_signal_channel'}]-(image:Individual) with n,a, image
+<-[:Related { label: 'has_signal_channel'}]-(image:Individual) 
+WITH n, COLLECT (DISTINCT { anat_ind_name: a.label, image_id: image.short_form}) AS inds
 MATCH (n)-[r:has_reference]->(p:pub)
+WITH n, inds, COLLECT (DISTINCT { FlyBase: p.FlyBase, miniref:  p.miniref}) AS pubs
 RETURN n.label AS class_label, n.description as class_def, n.short_form AS class_id, n.synonym,
-COLLECT (DISTINCT { FlyBase: p.FlyBase, miniref:  p.miniref}) AS pubs,  
-COLLECT (DISTINCT { anat_ind_name: a.label, image_id: image.short_form}) AS inds
-MATCH (n:VFB:Class) WHERE n.short_form IN 
-['FBbt_00111464', 'FBbt_00007422', 'FBbt_00007225', 'FBbt_00100477'] 
-WITH n 
-OPTIONAL MATCH (n)<-[:SUBCLASSOF|INSTANCEOF*1..4]-(a:Individual)
-<-[:Related { label: 'depicts'}]-(c:Individual)
-<-[:Related { label: 'has_signal_channel'}]-(image:Individual) with n, COLLECT (DISTINCT { anat_ind_name: a.label, image_id: image.short_form}) AS inds
-MATCH (n)-[r:has_reference]->(p:pub) with n,inds,COLLECT (DISTINCT { FlyBase: p.FlyBase, miniref:  p.miniref}) AS pubs
-RETURN n.label AS class_label, n.description as class_def, n.short_form AS class_id, n.synonym,
-pubs, inds[1..6] as inds
+pubs, inds[1..6] AS inds
 ```
+
+Mapping to columns: 
+
+![image](https://cloud.githubusercontent.com/assets/112839/25243485/141d09c6-25f5-11e7-9b49-bdda3f0154db.png)
+
+We don't need a whole column for controls. Pubs should be hyperlinked microrefs (now available in prod).
+synonyms - In a new column or in name column?
+
 
 ### Anatomical Individuals results page query
 
