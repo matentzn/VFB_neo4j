@@ -15,7 +15,7 @@ RETURN member
 
 
 
-### Anatomical results page query
+### Anatomical classe results page query
 
 QUERY STATUS: TESTED, WORKS
 TBA: Needs to pull back tempate, but waiting on tweaks to schema.
@@ -42,7 +42,7 @@ RETURN n.label AS class_label, n.description as class_def, n.short_form AS class
 pubs, inds[1..6] as inds
 ```
 
-### Anatomical Individuals results page:
+### Anatomical Individuals results page query
 
 ```cql
 MATCH (n:VFB:Individual) WHERE n.short_form IN 
