@@ -15,11 +15,11 @@ RETURN member
 
 
 
-### Anatomical classe results page query
+### Anatomical class results page query
 
 QUERY STATUS: TESTED, WORKS
 
-TBA: Needs to pull back tempate, but waiting on tweaks to schema.
+TBA: Needs to pull back template, but waiting on tweaks to schema.
 
 ```cql
 MATCH (n:VFB:Class) WHERE n.short_form IN 
@@ -56,6 +56,38 @@ COLLECT (DISTINCT { type_label: typ.label, type_id: typ.short_form}) AS types, i
 
 TODO: Extend to templates and source, pub(s) once new schema is in place.
 
+### Cluster queries
+
+VFB1.5:
+
+![image](https://cloud.githubusercontent.com/assets/112839/25244911/726ad364-25fa-11e7-93bc-1b118c601e0e.png)
+
+
+Exemplar name	Exemplar definition	Exemplar source	Exemplar preview	Members of cluster
+
+Open 63 in viewer
+List individual members
+
+New columns: 
+* Columns: 
+  * NBLAST Cluster
+    * display name + thumbnail + link to terminfo; 
+  * Types 
+  * Q: List individual members
+  
+  
+```cql
+MATCH (channel:Individual)-[:depicts]->(c:Cluster)<-[:Related { label: 'exemplar_of' }]-(i:Individual)
+-[:INSTANCEOF]->(clz:Class) 
+WHERE not (clz.label ="neuron") 
+RETURN DISTINCT i.label, c.label, clz.label, channel.IRI
+```
+What's missing:
+
+1. Links to channels from clusters (=> thumbnail URL).
+2. Standard linkout pattern for cluster to LMB site for linkout.
+  
+  
 
 ### Generating trees for a given template.
 
