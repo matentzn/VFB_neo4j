@@ -15,28 +15,79 @@ RETURN member
 
 
 
-### Anatomical results page query
-
-The IN clause should be populated by an appropriate number of results.
-1 query (20 results?) => first page 
-Second query in background => complete results table
+### Anatomical class results page query
 
 QUERY STATUS: TESTED, WORKS
 
-~~~~~~~~~~.cql
+TBA: Needs to pull back template, but waiting on tweaks to schema.
 
+```cql
 MATCH (n:VFB:Class) WHERE n.short_form IN 
-['FBbt_00007405', 'FBbt_00007422', 'FBbt_00007225', 'FBbt_00100477'] 
+['FBbt_00111464', 'FBbt_00007422', 'FBbt_00007225', 'FBbt_00100477'] 
 WITH n 
-OPTIONAL MATCH (n)<-[:SUBCLASSOF|INSTANCEOF*..]-(a:Individual)
+OPTIONAL MATCH (n)<-[:SUBCLASSOF|INSTANCEOF*1..4]-(a:Individual)
 <-[:Related { label: 'depicts'}]-(c:Individual)
--[:Related { label: 'has_signal_channel'}]->(image:Individual), 
-(n)-[:has_reference]->(p:pub)
-RETURN n.label AS class_label, n.definition as class_def, n.short_form AS class_id
-COLLECT (DISTINCT { FlyBase: p.FlyBase, miniref:  p.miniref}) AS pubs, 
-COLLECT (DISTINCT { anat_ind_name: a.label, image_id: image.short_form}) AS inds
+<-[:Related { label: 'has_signal_channel'}]-(image:Individual) 
+WITH n, COLLECT (DISTINCT { anat_ind_name: a.label, image_id: image.short_form}) AS inds
+MATCH (n)-[r:has_reference]->(p:pub)
+WITH n, inds, COLLECT (DISTINCT { FlyBase: p.FlyBase, miniref:  p.miniref}) AS pubs
+RETURN n.label AS class_label, n.description as class_def, n.short_form AS class_id, n.synonym,
+pubs, inds[1..6] AS inds
+```
 
-~~~~~~~~~~~
+Mapping to columns: 
+
+![image](https://cloud.githubusercontent.com/assets/112839/25243485/141d09c6-25f5-11e7-9b49-bdda3f0154db.png)
+
+We don't need a whole column for controls. Pubs should be hyperlinked microrefs (now available in prod).
+synonyms - In a new column or in name column?
+
+
+### Anatomical Individuals results page query
+
+```cql
+MATCH (n:VFB:Individual) WHERE n.short_form IN 
+['VFB_00001000', 'VFB_00001002', 'VFB_00001003'] 
+WITH n 
+MATCH (image:Individual)-[:Related { label: 'has_signal_channel'}]->(channel:Individual)-[:Related { label: 'depicts'}]->(n)-[:INSTANCEOF]->(typ:Class)
+RETURN n.label AS anat_ind_label, n.description as anat_ind_def, n.short_form AS anat_ind_id, n.synonym AS anat_ind_syn,  
+COLLECT (DISTINCT { type_label: typ.label, type_id: typ.short_form}) AS types, image.short_form as image_id
+```
+
+TODO: Extend to templates and source, pub(s) once new schema is in place.
+
+### Cluster queries
+
+VFB1.5:
+
+![image](https://cloud.githubusercontent.com/assets/112839/25244911/726ad364-25fa-11e7-93bc-1b118c601e0e.png)
+
+
+Exemplar name	Exemplar definition	Exemplar source	Exemplar preview	Members of cluster
+
+Open 63 in viewer
+List individual members
+
+New columns: 
+* Columns: 
+  * NBLAST Cluster
+    * display name + thumbnail + link to terminfo; 
+  * Types 
+  * Q: List individual members
+  
+  
+```cql
+MATCH (channel:Individual)-[:depicts]->(c:Cluster)<-[:Related { label: 'exemplar_of' }]-(i:Individual)
+-[:INSTANCEOF]->(clz:Class) 
+WHERE not (clz.label ="neuron") 
+RETURN DISTINCT i.label, c.label, clz.label, channel.IRI
+```
+What's missing:
+
+1. Links to channels from clusters (=> thumbnail URL).
+2. Standard linkout pattern for cluster to LMB site for linkout.
+  
+  
 
 ### Generating trees for a given template.
 
