@@ -9,7 +9,6 @@ Requires ssh tunnel to LMB server
 @author: davidos
 '''
 
-import pymysql
 import sys
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect
 from uk.ac.ebi.vfb.neo4j.lmb2neoKB.lmb_query_tools import get_conn
@@ -39,6 +38,8 @@ for d in cursor.fetchall():
         statement += "SET d.data_link_post = '%s' " % d['data_link_post']
     if d['dataset_link']:
         statement += "SET d.dataset_link =  '%s' " % d['dataset_link']
+    if d['dataset_spec_text']:
+        statement += "SET d.dataset_spec_text =  '%s' " % d['dataset_spec_text']
     statements.append(statement)
 nc.commit_list(statements)
 
