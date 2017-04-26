@@ -24,6 +24,9 @@ statements.append("CREATE CONSTRAINT ON (ds:data_source) ASSERT ds.name IS UNIQU
 statements.append("CREATE CONSTRAINT ON (p:pub) ASSERT p.PMID IS UNIQUE")
 nc.commit_list(statements)
 
+statements = []
+
+
 cursor = c.cursor()
 cursor.execute("SELECT * FROM data_source")
 
