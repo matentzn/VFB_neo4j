@@ -42,7 +42,6 @@ for d in cursor.fetchall():
     IRI = vfb + d['shortFormID']
     ad = {}
     ad['short_form'] = d['shortFormID']
-    ad['label'] = d['label']
     ad['is_obsolete'] = bool(int(d['is_obsolete']))
     synonyms = []
     xrefs = []
