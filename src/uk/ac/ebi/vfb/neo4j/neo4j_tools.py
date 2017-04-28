@@ -91,6 +91,25 @@ class neo4j_connect():
             return True
         else:
             return False
+        
+def results_2_dict(results):
+    """Takes JSON results from a neo4J query and turns them into a table.
+    Only works for queries returning keyed attributes"""
+    ### The idea here is to mimic the existing dict_cursor to plug into existing code
+    ### Only works for queries returning keyed attributes
+    dc = []
+    for n in results[0]['data']:
+        dc.append(dict(zip(results[0]['columns'], n['row'])))
+    return dc
+
+def dict_2_mapString(d):
+    out = '{ '
+    for k,v in d.items():
+        out += "{} : '{}' ".format(k,v)
+    out += '}'
+    return out
+    
+        
             
             
 
