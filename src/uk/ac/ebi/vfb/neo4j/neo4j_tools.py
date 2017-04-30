@@ -147,11 +147,13 @@ def dict_2_mapString(d):
     return "{ " + ' , '.join(map_pairs) + " }"
 
 class neo4jContentMover:
-    """A wrapper for methods that move content between two neo4J databases."""
+    """A wrapper for methods that move content between two neo4J databases.
+    Limitation:  The database being pulled from must be Neo4j 3.n + (2.n lacks
+    the properties function used here)."""
     
     def __init__(self, From, To):
-        """From: a neo4jConnect object for interacting with a neo4j DB to pull content from
-        To: a neo4jConnect object for interacting with a neo4j DB to load content"""
+        """From: a neo4jConnect object for interacting with a neo4j DB to pull content from (neo 3.n+)
+        To: a neo4jConnect object for interacting with a neo4j DB to load content (2.n+)"""
         self.From = From
         self.To = To
         
@@ -166,10 +168,12 @@ class neo4jContentMover:
         nodes = results_2_dict_list(results)
         s = []
         for n in nodes:
-            attribute_map = dict_2_mapString(n[0]['properties'])
-            label_string = ':'.join(n[0]['labels'])
+            attribute_map = dict_2_mapString(n['properties'])
+            label_string = ':'.join(n['labels'])
             # Hmmm - would be better with unique attribute for n. iri ?
-            s.append("MERGE (n:%s) WHERE n.%s = %s SET n = %s" % (label_string, key, n[key], attribute_map)) 
+            s.append('MERGE (n:%s { %s : "%s" }) SET n = %s' % (label_string, 
+                                                                  key, n['properties'][key], 
+                                                                  attribute_map)) 
             self.To.commit_list(s)
             
     def move_edges(self, match, node_key, edge_key = ''):
@@ -179,8 +183,8 @@ class neo4jContentMover:
         f = neo4j_connect object for KB that content is being moved from
         t = neo4j_connect object for KB that content is being move to."""
         
-        ret = "RETURN n.IRI AS subject, type(r) AS reltype, " \
-                "properties(r) AS relprops, m.IRI AS object "       
+        ret = "RETURN s.%s AS subject, type(r) AS reltype, " \
+                "properties(r) AS relprops, o.%s AS object " % (node_key, node_key)      
         results = self.From.commit_list([match + ret])                                            
         edges = results_2_dict_list(results)
         s = []
@@ -191,9 +195,13 @@ class neo4jContentMover:
                 edge_restriction = "{ %s : '%s' }" % ()
             else:
                 edge_restriction = ""
-            s.append("MERGE (s { %s : '%s'})-[r:%s %s]->(o { %s : '%s'})) SET r = %s"  
-                      % (node_key, e['subject'], rel, edge_restriction, node_key, e['object'], attribute_map))
-        self.To.commit_list(s)                         
+            s.append("MATCH (s{ %s : '%s'}), (o{ %s : '%s'}) " \
+                     "MERGE (s)-[r:%s %s]->(o) " \
+                     "SET r = %s" % (node_key, e['subject'], 
+                                     node_key, e['object'], 
+                                     rel, edge_restriction,
+                                     attribute_map))
+        self.To.commit_list(s)                
                        
     
     
