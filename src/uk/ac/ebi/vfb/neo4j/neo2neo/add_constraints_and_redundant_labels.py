@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import sys
-from uk.ac.ebi.vfb.neo4j.tools import neo4j_connect
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect
 
 nc = neo4j_connect(base_uri = sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
 
@@ -51,7 +51,14 @@ label_types = {
    'Synaptic_neuropil_subdomain': 'synaptic neuropil subdomain',
    'Synaptic_neuropil_block': 'synaptic neuropil block',   
    'Clone': 'neuroblast lineage clone',
-   'Cluster': 'cluster'
+   'Cluster': 'cluster',
+   'Neuroblast': 'neuroblast',
+   'GMC': 'ganglion_mother_cell',
+   'Anatomy': 'material anatomical entity',
+   'Cell': 'cell',
+   'Glial_cell': 'glial cell',
+   'Expression_pattern': 'expression_pattern',
+   'Ganglion': 'ganglion'
    }
 
 label_additions = []

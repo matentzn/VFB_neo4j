@@ -59,6 +59,7 @@ class kb_writer (object):
         from key value pairs in a dict (attribute_dict).
         Values must be int, float, string or list.
         var = variable name in CYPHER statement."""
+        # Note - may be able to simplify this by converting to a map and passing that.
         out = ''
         for k,v in attribute_dict.items():
             if type(v) == int:
@@ -82,6 +83,9 @@ class kb_owl_edge_writer(kb_writer):
     """
     
     def check_proprties(self):
+        ## Not well thought out.  Consider removing.
+        """OWL edge IRIs must correspond to IRIs of property nodes (loaded from source ontologies).
+        self.properties = list of properties being added during edge addition."""
         q = self.nc.commit_list(["MATCH (n) WHERE n.IRI in %s RETURN n.IRI" % (str(list(self.properties)))])
         if q:
             in_kb = [x['row'][0] for x in q[0]['data'] if q[0]['data']] # YUK!
