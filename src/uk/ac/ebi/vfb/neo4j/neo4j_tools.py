@@ -4,6 +4,7 @@ import requests
 import json
 import warnings
 import re
+#import token
 
 
 '''
@@ -44,7 +45,6 @@ class neo4j_connect():
         Errors prompt warnings, not exceptions, and cause return  = FALSE.
         Returns results (json, list) or False if any errors are encountered."""
         cstatements = []
-        results = {}
         if return_graphs:
             for s in statements:
                 cstatements.append({'statement': s, "resultDataContents" : [ "row", "graph" ]})
@@ -135,9 +135,9 @@ def dict_2_mapString(d):
         elif type(v) == float:   
             map_pairs.append("%s : %f " % (k,v))                   
         elif type(v) == str:
-            map_pairs.append('%s = "%s"' % (k, escape_string(v)))           
+            map_pairs.append('%s : "%s"' % (k, escape_string(v)))           
         elif type(v) == list:                        
-            map_pairs.append("%s = %s" % (k, str([escape_string(i) for i in v])))
+            map_pairs.append('%s : %s' % (k, str([escape_string(i) for i in v])))
         elif type(v) == bool:
             map_pairs.append("%s : %s" % (k, str(v)))                
         else: 
@@ -145,6 +145,57 @@ def dict_2_mapString(d):
                           % (type(v), k, (str(v))))
     
     return "{ " + ' , '.join(map_pairs) + " }"
+
+class neo4jContentMover:
+    """A wrapper for methods that move content between two neo4J databases."""
+    
+    def __init__(self, From, To):
+        """From: a neo4jConnect object for interacting with a neo4j DB to pull content from
+        To: a neo4jConnect object for interacting with a neo4j DB to load content"""
+        self.From = From
+        self.To = To
+        
+    def move_nodes(self, match, key):
+        """match = any match statement in which a node to move is specfied with variable n
+        f = neo4j_connect object for KB that content is being moved from
+        t = neo4j_connect object for KB that content is being move to.
+        """
+        ret = " RETURN labels(n) AS labels , " \
+                "properties(n) as properties"
+        results = self.From.commit_list([match + ret])                                            
+        nodes = results_2_dict_list(results)
+        s = []
+        for n in nodes:
+            attribute_map = dict_2_mapString(n[0]['properties'])
+            label_string = ':'.join(n[0]['labels'])
+            # Hmmm - would be better with unique attribute for n. iri ?
+            s.append("MERGE (n:%s) WHERE n.%s = %s SET n = %s" % (label_string, key, n[key], attribute_map)) 
+            self.To.commit_list(s)
+            
+    def move_edges(self, match, node_key, edge_key = ''):
+        """
+        match = any match statement in which an edge is specified with variables s,r,o
+        key = key used to add new content
+        f = neo4j_connect object for KB that content is being moved from
+        t = neo4j_connect object for KB that content is being move to."""
+        
+        ret = "RETURN n.IRI AS subject, type(r) AS reltype, " \
+                "properties(r) AS relprops, m.IRI AS object "       
+        results = self.From.commit_list([match + ret])                                            
+        edges = results_2_dict_list(results)
+        s = []
+        for e in edges:
+            attribute_map = dict_2_mapString(e['relprops'])
+            rel = e['reltype']
+            if edge_key:
+                edge_restriction = "{ %s : '%s' }" % ()
+            else:
+                edge_restriction = ""
+            s.append("MERGE (s { %s : '%s'})-[r:%s %s]->(o { %s : '%s'})) SET r = %s"  
+                      % (node_key, e['subject'], rel, edge_restriction, node_key, e['object'], attribute_map))
+        self.To.commit_list(s)                         
+                       
+    
     
     
 
