@@ -3,6 +3,7 @@
 import requests
 import json
 import warnings
+import re
 
 
 '''
@@ -27,23 +28,29 @@ def chunks(l, n):
 class neo4j_connect():
     """Thin layer over REST API to hold connection details, 
     handle multi-statement POST queries."""
+    # In order to support returning graphs, we need 
+    
     def __init__(self, base_uri, usr, pwd):
         self.base_uri=base_uri
         self.usr = usr
         self.pwd = pwd
         self.test_connection()
        
-    def commit_list(self, statements):
+    def commit_list(self, statements, return_graphs = False):
         """Commit a list of statements to neo4J DB via REST API.
         Prints requests status and warnings if any problems with commit.
-        cypher_statments = list of cypher statements as strings
-        base_uri = base URL for neo4J DB.
+            - statements = list of cypher statements as strings
+            - return_graphs, optionally specify graphs to be returned in JSON results.
         Errors prompt warnings, not exceptions, and cause return  = FALSE.
         Returns results (json, list) or False if any errors are encountered."""
         cstatements = []
-    #   results = {}
-        for s in statements:
-            cstatements.append({'statement': s})
+        results = {}
+        if return_graphs:
+            for s in statements:
+                cstatements.append({'statement': s, "resultDataContents" : [ "row", "graph" ]})
+        else:        
+            for s in statements:
+                cstatements.append({'statement': s}) # rows an columns are returned by default.
         payload = {'statements': cstatements}
         response = requests.post(url = "%s/db/data/transaction/commit" 
                                  % self.base_uri, auth = (self.usr, self.pwd) ,
@@ -58,7 +65,8 @@ class neo4j_connect():
         """Commit a list of statements to neo4J DB via REST API, split into chunks.
         cypher_statments = list of cypher statements as strings
         base_uri = base URL for neo4J DB
-        Default chunk size = 100 statements. This can be overridden by KWARG chunk_length
+        Default chunk size = 100 statements. This can be overridden by KWARG chunk_length.
+        Doesn't support returning graphs.
         """
         chunked_statements = chunks(l = statements, n=chunk_length)
         chunk_results = []
@@ -92,23 +100,54 @@ class neo4j_connect():
         else:
             return False
         
-def results_2_dict(results):
-    """Takes JSON results from a neo4J query and turns them into a table.
-    Only works for queries returning keyed attributes"""
-    ### The idea here is to mimic the existing dict_cursor to plug into existing code
-    ### Only works for queries returning keyed attributes
+    def list_all_node_props(self):
+        r = self.commit_list(['MATCH (n) with keys(n) AS kl UNWIND kl as k RETURN DISTINCT k'])
+        d = results_2_dict_list(r)
+        return [x['k'] for x in d]
+    
+    def list_all_edge_props(self):
+        r = self.commit_list(['MATCH ()-[r]-() with keys(r) AS kl UNWIND kl as k RETURN DISTINCT k'])
+        d = results_2_dict_list(r)
+        return [x['k'] for x in d]
+        
+def results_2_dict_list(results):
+    """Takes JSON results from a neo4J query and turns them into a list of dicts.
+    """
     dc = []
     for n in results[0]['data']:
         dc.append(dict(zip(results[0]['columns'], n['row'])))
     return dc
 
+def escape_string(strng):
+    if type(strng) == str:
+        strng = re.sub("'", "\\'", strng)
+        strng = re.sub(r'\\', r'\\\\', strng)
+    return strng
+
 def dict_2_mapString(d):
-    out = '{ '
-    for k,v in d.items():
-        out += "{} : '{}' ".format(k,v)
-    out += '}'
-    return out
+    """Converts a Python dict into a cypher map string.
+    Only supports values of type: int, float, list, bool, string."""
+    # Surely one of the fancier libraries comes with this built in!
+    map_pairs = []
+    for k,v in d.items():  
+        if type(v) == (int):
+            map_pairs.append("%s : %d" % (k,v))
+        elif type(v) == float:   
+            map_pairs.append("%s : %f " % (k,v))                   
+        elif type(v) == str:
+            map_pairs.append('%s = "%s"' % (k, escape_string(v)))           
+        elif type(v) == list:                        
+            map_pairs.append("%s = %s" % (k, str([escape_string(i) for i in v])))
+        elif type(v) == bool:
+            map_pairs.append("%s : %s" % (k, str(v)))                
+        else: 
+            warnings.warn("Can't use a %s as an attribute value in Cypher. Key %s Value :%s" 
+                          % (type(v), k, (str(v))))
     
+    return "{ " + ' , '.join(map_pairs) + " }"
+    
+    
+
         
             
             
