@@ -157,10 +157,11 @@ class neo4jContentMover:
         self.From = From
         self.To = To
         
-    def move_nodes(self, match, key):
+    def move_nodes(self, match, key, chunk_length = 2000, verbose = True):
         """match = any match statement in which a node to move is specfied with variable n
         f = neo4j_connect object for KB that content is being moved from
         t = neo4j_connect object for KB that content is being move to.
+        Optionally set commit chunk length
         """
         ret = " RETURN labels(n) AS labels , " \
                 "properties(n) as properties"
@@ -174,14 +175,18 @@ class neo4jContentMover:
             s.append('MERGE (n:%s { %s : "%s" }) SET n = %s' % (label_string, 
                                                                   key, n['properties'][key], 
                                                                   attribute_map)) 
-            self.To.commit_list(s)
-            
-    def move_edges(self, match, node_key, edge_key = ''):
+        self.To.commit_list_in_chunks(statements = s,
+                                       verbose = verbose, 
+                                       chunk_length = chunk_length)
+                    
+    def move_edges(self, match, node_key, edge_key = '', chunk_length = 2000, verbose = True):
         """
         match = any match statement in which an edge is specified with variables s,r,o
         key = key used to add new content
         f = neo4j_connect object for KB that content is being moved from
-        t = neo4j_connect object for KB that content is being move to."""
+        t = neo4j_connect object for KB that content is being move to.
+        Optionally set commit chunk length
+        """
         
         ret = "RETURN s.%s AS subject, type(r) AS reltype, " \
                 "properties(r) AS relprops, o.%s AS object " % (node_key, node_key)      
@@ -195,13 +200,17 @@ class neo4jContentMover:
                 edge_restriction = "{ %s : '%s' }" % ()
             else:
                 edge_restriction = ""
-            s.append("MATCH (s{ %s : '%s'}), (o{ %s : '%s'}) " \
+            s.append("MERGE (s{ %s : '%s'}) " \
+                     "MERGE (o{ %s : '%s'}) " \
                      "MERGE (s)-[r:%s %s]->(o) " \
                      "SET r = %s" % (node_key, e['subject'], 
                                      node_key, e['object'], 
                                      rel, edge_restriction,
                                      attribute_map))
-        self.To.commit_list(s)                
+        self.To.commit_list_in_chunks(statements = s,
+                                       verbose = verbose, 
+                                       chunk_length = chunk_length)  
+                      
                        
     
     
