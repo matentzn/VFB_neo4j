@@ -9,8 +9,8 @@ Created on 4 Feb 2016
 @author: davidos
 '''
 
-from .dbtools import get_fb_conn, dict_cursor
-from ..tools import neo4j_connect, chunks
+from uk.ac.ebi.vfb.neo4j.flybase2neo.FBtools import get_fb_conn, dict_cursor
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect, chunks
 import sys
 from dict_cursor import dict_cursor
 
@@ -93,6 +93,7 @@ cursor.execute("SELECT DISTINCT tgtyp.name as tg_type, obj2.feature_id as transg
 # (ep:expression_pattern:Class { label :  "expression pattern of X", short_form  : "VFB…." }) 
 # (ep)-[expresses]->(:genetic_feature {  label : 'p{X}', short_form : "FBbi..." })
 # Or include extra node?  This makes it easier to code to, but adds extra complexity to queries.
+# Need link to allele node for X link to phenotypes.
 
 statements = []
 
@@ -180,8 +181,8 @@ statements = []
 
 ## Need to be able to operate on each FBex independently
 for d in dict_cursor(cursor):
-    fbex_dict[d'FBex']i
-    statements.append("MERGE (x:Class { short_form = '%s' } )  % d['fbex']")
+    fbex_dict[d'FBex'] = i
+    statements.append("MERGE (x:Class { short_form = '%s' } )  % d['fbex']" % d['FBex'])
 
 # Now need a loop structure that stays on 
 

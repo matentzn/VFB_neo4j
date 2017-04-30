@@ -41,7 +41,7 @@ def map_feature_type(fbid, ftype):
 def clean_sgml_tags(sgml_string):
     sgml_string = re.sub('up>', 'sup>', sgml_string)
     sgml_string = re.sub('down>', 'sub>', sgml_string)
-    sgml_string = re.sub(r'\\', '&#92;', sgml_string)
+    sgml_string = re.sub(r'\\', '&#92;', sgml_string)  # This looks hacky.  Shouldn't we have a generic unicode soln?
     return sgml_string
 
 # site check
