@@ -5,7 +5,7 @@ Created on Apr 28, 2017
 '''
 
 
-from ..neo4j_tools import neo4j_connect, results_2_dict, dict_2_mapString
+from ..neo4j_tools import neo4j_connect, results_2_dict_list, dict_2_mapString
 import sys
 
 """
@@ -17,36 +17,66 @@ and move them from KB to prod.
 kb = neo4j_connect(sys.argv(1), sys.argv(2), sys.argv(3))
 prod = neo4j_connect(sys.argv(4), sys.argv(5), sys.argv(6))
 
-results = kb.commit_list(["MATCH (n) " \
-                    "WHERE not('Class' IN labels(n)) " \
-                    "AND not('Individual' IN labels(n)) " \
-                    "AND not('Property' IN labels(n))  " \
-                    "RETURN  labels(n) AS labels , " \
-                    "properties(n) as properties;"])
 
-nodes = results_2_dict(results)
-s = []
-for n in nodes:
+
+def move_nodes(f, t, match, key):
+    """match = any match statement in which a node to move is specfied with variable n
+    f = neo4j_connect object for KB that content is being moved from
+    t = neo4j_connect object for KB that content is being move to.
+    """
+    ret = " RETURN labels(n) AS labels , " \
+            "properties(n) as properties"
+    results = f.commit_list([match + ret])                                            
+    nodes = results_2_dict_list(results)
+    s = []
+    for n in nodes:
     
-    attribute_map = dict_2_mapString(n[0]['properties'])
-    label_string = ':'.join(n[0]['labels'])
-    # Hmmm - would be better with unique attribute for n.:
-    s.append("CREATE (n:%s) SET n = %s" % (label_string, attribute_map)) 
-
-prod.commit_list(s)
-
-results = kb.commit_list(["MATCH (n)-[r]->(m) " \
-                          "WHERE not(type(r) IN ['INSTANCEOF', 'Related']) " \
-                          "RETURN n.IRI AS subject, type(r) AS reltype, " \
-                          "properties(r) AS relprops, m.IRI AS object "])
-
-edges = results_2_dict(results)
-
-for e in edges:
-    attribute_map = dict_2_mapString(e['relprops'])
-    rel = e['reltype']
-    s.append(["MERGE (s { iri : '%s'})-[r:%s]-(o { iri : '%s'})) SET r = %s"
-              % (e['subject'], rel, e['object'], attribute_map)])
+        attribute_map = dict_2_mapString(n[0]['properties'])
+        label_string = ':'.join(n[0]['labels'])
+        # Hmmm - would be better with unique attribute for n. iri ?
+        s.append("MERGE (n:%s) WHERE n.%s = %s SET n = %s" % (label_string, key, n[key], attribute_map)) 
+        t.commit_list(s)
+        
+def move_edges(f, t, match, node_key, edge_key = ''):
+    """
+    match = any match statement in which an edge is specified with variables s,r,o
+    key = key used to add new content
+    f = neo4j_connect object for KB that content is being moved from
+    t = neo4j_connect object for KB that content is being move to."""
     
-prod.commit_list(s)
+    ret = "RETURN n.IRI AS subject, type(r) AS reltype, " \
+            "properties(r) AS relprops, m.IRI AS object "       
+    results = f.commit_list([match + ret])                                            
+    edges = results_2_dict_list(results)
+    s = []
+    for e in edges:
+        attribute_map = dict_2_mapString(e['relprops'])
+        rel = e['reltype']
+        if edge_key:
+            edge_restriction = "{ %s : '%s' }" % ()
+        s.append("MERGE (s { %s : '%s'})-[r:%s %s]->(o { %s : '%s'})) SET r = %s"  # Getting too complicated.  Use format string!
+                  % (node_key, e['subject'], rel, edge_restriction, node_key, e['object'], attribute_map))
+    t.commit_list(s)                         
+                              
+    
 
+## move non-OWL content
+node_match = "MATCH (n) " \
+        "WHERE not('Class' IN labels(n)) " \
+        "AND not('Individual' IN labels(n)) " \
+        "AND not('Property' IN labels(n))  "
+        
+move_nodes(f = kb, t = prod, match = node_match, key = 'iri',)
+
+edge_match = "MATCH (s)-[r]->(o) " \
+             "WHERE not(type(r) IN ['INSTANCEOF', 'Related']) " 
+
+move_edges(f = kb, t = prod, match = edge_match, node_key = 'iri')
+
+## move channels
+ 
+node_match = "MATCH (:Class { label: 'channel'})-[:INSTANCEOF]-(n:Individual) "
+move_nodes(f = kb, t = prod, match = node_match, key = 'iri')
+edge_match = "MATCH (:Class { label: 'channel'})-[:INSTANCEOF]-(s:Individual) " \
+             "WITH n MATCH (s)-[r]-(o) "
+move_edges(f = kb, t = prod, match = edge_match, node_key = 'iri')
