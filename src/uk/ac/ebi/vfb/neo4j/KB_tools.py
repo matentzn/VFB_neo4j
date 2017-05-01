@@ -86,7 +86,7 @@ class kb_owl_edge_writer(kb_writer):
         ## Not well thought out.  Consider removing.
         """OWL edge IRIs must correspond to IRIs of property nodes (loaded from source ontologies).
         self.properties = list of properties being added during edge addition."""
-        q = self.nc.commit_list(["MATCH (n) WHERE n.IRI in %s RETURN n.IRI" % (str(list(self.properties)))])
+        q = self.nc.commit_list(["MATCH (n) WHERE n.iri in %s RETURN n.iri" % (str(list(self.properties)))])
         if q:
             in_kb = [x['row'][0] for x in q[0]['data'] if q[0]['data']] # YUK!
             not_in_kb = self.properties.difference(set(in_kb))
@@ -100,9 +100,9 @@ class kb_owl_edge_writer(kb_writer):
             
     def _add_related_edge(self, s, r, o, stype, otype, edge_annotations = {}):
         self.properties.add(r)
-        out =  "MATCH (s:%s { IRI:'%s'} ), (rn:Property { IRI: '%s' }), (o:%s { IRI:'%s'} ) " % (
+        out =  "MATCH (s:%s { iri:'%s'} ), (rn:Property { iri: '%s' }), (o:%s { iri:'%s'} ) " % (
                                                                            stype, s, r, otype, o)
-        out += "MERGE (s)-[re:Related { IRI: '%s'}]-(o) " % r
+        out += "MERGE (s)-[re:Related { iri: '%s'}]-(o) " % r
         out += self._set_attributes_from_dict('re', edge_annotations)        
         out += "SET re.label = rn.label SET re.short_form = rn.short_form "
         out += "RETURN '%s', '%s', '%s' " % (s,r,o) # returning input for ref in debugging
@@ -131,7 +131,7 @@ class kb_owl_edge_writer(kb_writer):
         
     def add_named_type_ax(self, s,o):
         self.statements.append(
-                               "MATCH (s:Individual { IRI: '%s'} ), (o:Class { IRI: '%s'} ) " \
+                               "MATCH (s:Individual { iri: '%s'} ), (o:Class { iri: '%s'} ) " \
                                "MERGE (s)-[:INSTANCEOF]-(o) " \
                                "RETURN '%s', '%s'" % (s, o, s, o))
                 
@@ -141,7 +141,7 @@ class kb_owl_edge_writer(kb_writer):
                                edge_annotations = edge_annotations) 
 
     def add_named_subClassOf_ax(self, s,o):
-        return "MATCH (s:Class { IRI: '%s'} ), (o:Class { IRI: '%s'} ) " \
+        return "MATCH (s:Class { iri: '%s'} ), (o:Class { iri: '%s'} ) " \
                 "MERGE (s)-[:SUBCLASSOF]-(o)" % (s, o)            
     
     
@@ -149,6 +149,7 @@ class kb_owl_edge_writer(kb_writer):
         """Tests lists of return values from RESTFUL API for edge creation
          by checking "relationships_created": as a boolean, generates warning
         """
+       
         missed_edges = [x['columns'] for x in self.output[0] if not x['data']]
         if missed_edges:
             for e in missed_edges:
@@ -173,17 +174,17 @@ class node_importer(kb_writer):
                 self.statements.append("CREATE INDEX ON :%s(%s)" % (k,a))
             
     def add_default_constraint_set(self, labels):
-        """SETS IRI and short_form as uniq, indexes label"""
+        """SETS iri and short_form as uniq, indexes label"""
         uniqs = {}
         indexes = {}
         for l in labels:
-            uniqs[l] = ['IRI', 'short_form']
+            uniqs[l] = ['iri', 'short_form']
             indexes[l] = ['label']
         self.add_constraints(uniqs, indexes)
         self.commit()
             
     def add_node(self, labels, IRI, attribute_dict = {}):
-        statement = "MERGE (n:%s { IRI: '%s' }) " % ((':'.join(labels)), IRI)
+        statement = "MERGE (n:%s { iri: '%s' }) " % ((':'.join(labels)), IRI)
         statement += self._set_attributes_from_dict(var = 'n', attribute_dict = attribute_dict)
         self.statements.append(statement)
     
