@@ -13,24 +13,24 @@ class TestEdgeWriter(unittest.TestCase):
     def setUp(self):
         self.edge_writer = kb_owl_edge_writer('http://localhost:7474', 'neo4j', 'neo4j')
         s = []
-        s.append("MERGE (i1:Individual { IRI : 'Aya' }) " \
-            "MERGE (r1:Property { IRI : 'http://fu.bar/loves', label : 'loves' }) " \
-            "MERGE (i2:Individual { IRI: 'Freddy' }) ")
-        s.append("MERGE (i1:Individual { IRI : 'Aya' }) " \
-            "MERGE (r1:Property { IRI : 'daughter_of' }) " \
-            "MERGE (i2:Individual { IRI: 'David' }) ")
-        s.append("MERGE (s:Class { IRI: 'Person' } ) ")
-        s.append("MERGE (s:Class { IRI: 'Toy' } ) " )                
+        s.append("MERGE (i1:Individual { iri : 'Aya' }) " \
+            "MERGE (r1:Property { iri : 'http://fu.bar/loves', label : 'loves' }) " \
+            "MERGE (i2:Individual { iri: 'Freddy' }) ")
+        s.append("MERGE (i1:Individual { iri : 'Aya' }) " \
+            "MERGE (r1:Property { iri : 'daughter_of' }) " \
+            "MERGE (i2:Individual { iri: 'David' }) ")
+        s.append("MERGE (s:Class { iri: 'Person' } ) ")
+        s.append("MERGE (s:Class { iri: 'Toy' } ) " )                
         self.edge_writer.nc.commit_list(s)
         pass
 
 
     def tearDown(self):
         # TODO - add some deletions here
-        s = ["MATCH (i1:Individual { IRI : 'Aya' })-" \
-       "[r1:Related { IRI : 'http://fu.bar/loves' }]->" \
-       "(i2:Individual { IRI: 'Freddy' }) DELETE i1, r1, i2"]
-        s.append("(r1:Property { IRI : 'http://fu.bar/loves'}) DELETE r1")       
+        s = ["MATCH (i1:Individual { iri : 'Aya' })-" \
+       "[r1:Related { iri : 'http://fu.bar/loves' }]->" \
+       "(i2:Individual { iri: 'Freddy' }) DELETE i1, r1, i2"]
+        s.append("(r1:Property { iri : 'http://fu.bar/loves'}) DELETE r1")       
         self.edge_writer.nc.commit_list(s)
         pass
 
@@ -61,9 +61,9 @@ class TestEdgeWriter(unittest.TestCase):
         self.edge_writer.add_named_type_ax(s = 'Aya', o = 'Person')
         self.edge_writer.commit()
         assert self.edge_writer.test_edge_addition() == True        
-        r1 = self.edge_writer.nc.commit_list(["MATCH (i1:Individual { IRI : 'Aya' })-" \
-        "[r1:Related { IRI : 'http://fu.bar/loves' }]->" \
-        "(i2:Individual { IRI: 'Freddy' }) RETURN r1.label"])
+        r1 = self.edge_writer.nc.commit_list(["MATCH (i1:Individual { iri : 'Aya' })-" \
+        "[r1:Related { iri : 'http://fu.bar/loves' }]->" \
+        "(i2:Individual { iri: 'Freddy' }) RETURN r1.label"])
         assert r1[0]['data'][0]['row'][0] == 'loves'
         
 class TestNodeImporter(unittest.TestCase):
