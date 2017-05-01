@@ -120,8 +120,9 @@ def results_2_dict_list(results):
 
 def escape_string(strng):
     if type(strng) == str:
-        strng = re.sub("'", "\\'", strng)
         strng = re.sub(r'\\', r'\\\\', strng)
+        strng = re.sub("'", "\\'", strng)
+        strng = re.sub('"', '\\"', strng)        
     return strng
 
 def dict_2_mapString(d):
@@ -162,7 +163,6 @@ class neo4jContentMover:
         key = attribute used in merge statements to non-redundantly add content. must be present
         in matched nodes.
         Optionally set commit chunk length, verbosity, test mode (limit 100)
-        
         """
         
         ret = " RETURN n.%s AS key, labels(n) AS labels , " \
