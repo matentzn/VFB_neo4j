@@ -157,21 +157,26 @@ class neo4jContentMover:
         self.From = From
         self.To = To
         
-    def move_nodes(self, match, key, chunk_length = 2000, verbose = True):
-        """match = any match statement in which a node to move is specfied with variable n
-        f = neo4j_connect object for KB that content is being moved from
-        t = neo4j_connect object for KB that content is being move to.
-        Optionally set commit chunk length
+    def move_nodes(self, match, key, chunk_length = 2000, verbose = True, test_mode = False):
+        """match = any match statement in which a node to move is specified with variable n.
+        key = attribute used in merge statements to non-redundantly add content. must be present
+        in matched nodes.
+        Optionally set commit chunk length, verbosity, test mode (limit 100)
+        
         """
-        ret = " RETURN labels(n) AS labels , " \
-                "properties(n) as properties"
+        
+        ret = " RETURN n.%s AS key, labels(n) AS labels , " \
+                "properties(n) as properties" % key
+        
+
+        if test_mode:
+            ret += " limit 100"   
         results = self.From.commit_list([match + ret])                                            
         nodes = results_2_dict_list(results)
         s = []
         for n in nodes:
             attribute_map = dict_2_mapString(n['properties'])
             label_string = ':'.join(n['labels'])
-            # Hmmm - would be better with unique attribute for n. iri ?
             s.append('MERGE (n:%s { %s : "%s" }) SET n = %s' % (label_string, 
                                                                   key, n['properties'][key], 
                                                                   attribute_map)) 
@@ -179,17 +184,20 @@ class neo4jContentMover:
                                        verbose = verbose, 
                                        chunk_length = chunk_length)
                     
-    def move_edges(self, match, node_key, edge_key = '', chunk_length = 2000, verbose = True):
+    def move_edges(self, match, node_key, edge_key = '', chunk_length = 2000, 
+                   verbose = True, test_mode = False):
         """
-        match = any match statement in which an edge is specified with variables s,r,o
-        key = key used to add new content
+        match = any match statement in which an edge (triple) is specified with variables s,r,o
+        node_key = key used to match/merge to add new content
         f = neo4j_connect object for KB that content is being moved from
         t = neo4j_connect object for KB that content is being move to.
         Optionally set commit chunk length
         """
         
         ret = "RETURN s.%s AS subject, type(r) AS reltype, " \
-                "properties(r) AS relprops, o.%s AS object " % (node_key, node_key)      
+                "properties(r) AS relprops, o.%s AS object " % (node_key, node_key)
+        if test_mode:
+            ret += " limit 100"
         results = self.From.commit_list([match + ret])                                            
         edges = results_2_dict_list(results)
         s = []
@@ -197,7 +205,10 @@ class neo4jContentMover:
             attribute_map = dict_2_mapString(e['relprops'])
             rel = e['reltype']
             if edge_key:
-                edge_restriction = "{ %s : '%s' }" % ()
+                if edge_key in e['relprops'].keys():
+                    edge_restriction = "{ %s : '%s' }" % (edge_key, e['relprops'][edge_key])
+                else :
+                    warnings.warn("Matched edge lacks specified edge_key (%s)"  % (edge_key))
             else:
                 edge_restriction = ""
             s.append("MERGE (s{ %s : '%s'}) " \
