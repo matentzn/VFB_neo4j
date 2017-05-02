@@ -194,8 +194,8 @@ class neo4jContentMover:
         Optionally set commit chunk length
         """
         
-        ret = "RETURN s.%s AS subject, type(r) AS reltype, " \
-                "properties(r) AS relprops, o.%s AS object " % (node_key, node_key)
+        ret = "RETURN s.%s AS subject, labels(s) as slab, type(r) AS reltype, " \
+                "properties(r) AS relprops, o.%s AS object, labels(o) AS olab " % (node_key, node_key)
         if test_mode:
             ret += " limit 100"
         results = self.From.commit_list([match + ret])                                            
@@ -204,6 +204,8 @@ class neo4jContentMover:
         for e in edges:
             attribute_map = dict_2_mapString(e['relprops'])
             rel = e['reltype']
+            slab_string = ':'+':'.join(e['slab'])
+            olab_string = ':'+':'.join(e['olab'])
             if edge_key:
                 if edge_key in e['relprops'].keys():
                     edge_restriction = "{ %s : '%s' }" % (edge_key, e['relprops'][edge_key])
@@ -211,11 +213,11 @@ class neo4jContentMover:
                     warnings.warn("Matched edge lacks specified edge_key (%s)"  % (edge_key))
             else:
                 edge_restriction = ""
-            s.append("MERGE (s{ %s : '%s'}) " \
-                     "MERGE (o{ %s : '%s'}) " \
+            s.append("MERGE (s%s { %s : '%s'}) " \
+                     "MERGE (o%s { %s : '%s'}) " \
                      "MERGE (s)-[r:%s %s]->(o) " \
-                     "SET r = %s" % (node_key, e['subject'], 
-                                     node_key, e['object'], 
+                     "SET r = %s" % (slab_string, node_key, e['subject'], 
+                                     olab_string, node_key, e['object'], 
                                      rel, edge_restriction,
                                      attribute_map))
         self.To.commit_list_in_chunks(statements = s,
