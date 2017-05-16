@@ -122,6 +122,7 @@ class kb_owl_edge_writer(kb_writer):
         args = locals()  # Includes self
         args['stype'] = "Individual"
         args['otype'] = "Individual"
+        args.pop(self)
         self._add_related_edge(**args) 
                 
     def add_anon_type_ax(self, s, r, o, edge_annotations = {}, match_on = "iri"):
@@ -134,6 +135,7 @@ class kb_owl_edge_writer(kb_writer):
         args = locals()
         args['stype'] = "Individual"
         args['otype'] = "Class"
+        args.pop(self)
         self._add_related_edge(**args)
     
         
@@ -148,6 +150,7 @@ class kb_owl_edge_writer(kb_writer):
         args = locals()
         args['stype'] = "Class"
         args['otype'] = "Class"
+        args.pop(self)
         self._add_related_edge(**args)
 
     def add_named_subClassOf_ax(self, s,o):
