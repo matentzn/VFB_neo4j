@@ -2,7 +2,7 @@
 
 import sys
 import re
-from uk.ac.ebi.vfb.neo4j.tools import neo4j_connect
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect
 
 """A simple script to make edges named (typed) for relations from all edges of of type :Related.
 Arg1 = base_uri or neo4J server
