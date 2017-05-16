@@ -119,11 +119,9 @@ class kb_owl_edge_writer(kb_writer):
         o = object individual iri.
         Optionally add edge annotations specified as key value 
         pairs in dict."""
-        args = locals()  # Includes self
-        args['stype'] = "Individual"
-        args['otype'] = "Individual"
-        args.pop(self)
-        self._add_related_edge(**args) 
+        self._add_related_edge(s, r, o, stype = "Individual", otype = "Individual", 
+                               edge_annotations = edge_annotations, 
+                               match_on = match_on)
                 
     def add_anon_type_ax(self, s, r, o, edge_annotations = {}, match_on = "iri"):
         """Add anonymous OWL Type statement queue.
@@ -132,11 +130,9 @@ class kb_owl_edge_writer(kb_writer):
         o = object Class iri.
         Optionally add edge annotations specified as key value 
         pairs in dict."""
-        args = locals()
-        args['stype'] = "Individual"
-        args['otype'] = "Class"
-        args.pop(self)
-        self._add_related_edge(**args)
+        self._add_related_edge(s, r, o, stype = "Individual", otype = "Class", 
+                               edge_annotations = edge_annotations, 
+                               match_on = match_on)
     
         
     def add_named_type_ax(self, s,o, match_on = "iri"):
@@ -147,11 +143,9 @@ class kb_owl_edge_writer(kb_writer):
                 
     def add_anon_subClassOf_ax(self, s,r,o, edge_annotations = {}, match_on = "iri"):
         ### Should probably only support adding individual:individual edges in KB...
-        args = locals()
-        args['stype'] = "Class"
-        args['otype'] = "Class"
-        args.pop(self)
-        self._add_related_edge(**args)
+        self._add_related_edge(s, r, o, stype = "Class", otype = "Class", 
+                               edge_annotations = edge_annotations, 
+                               match_on = match_on)
 
     def add_named_subClassOf_ax(self, s,o):
         return "MATCH (s:Class { iri: '%s'} ), (o:Class { iri: '%s'} ) " \
