@@ -98,47 +98,57 @@ class kb_owl_edge_writer(kb_writer):
         else: 
             return False
             
-    def _add_related_edge(self, s, r, o, stype, otype, edge_annotations = {}):
-        self.properties.add(r)
-        out =  "MATCH (s:%s { iri:'%s'} ), (rn:Property { iri: '%s' }), (o:%s { iri:'%s'} ) " % (
-                                                                           stype, s, r, otype, o)
-        out += "MERGE (s)-[re:Related { iri: '%s'}]-(o) " % r
+    def _add_related_edge(self, s, r, o, stype, otype, edge_annotations = {}, match_on = "iri"):
+        if match_on not in ['iri', 'label', 'short_form']:
+            raise Exception("Illegal match property '%s'. " \
+                            "Allowed match properties are 'iri', 'label', 'short_form'" % match_on)
+        out =  "MATCH (s:{stype} {{ {match_on}:'{s}' }} ), (rn:Property {{ {match_on}: '{r}' }}), " \
+          "(o:{otype} {{ {match_on}:'{o}' }} ) ".format(**locals())
+        out += "MERGE (s)-[re:Related { %s: '%s'}]-(o) " % (match_on, r)
         out += self._set_attributes_from_dict('re', edge_annotations)        
         out += "SET re.label = rn.label SET re.short_form = rn.short_form "
         out += "RETURN '%s', '%s', '%s' " % (s,r,o) # returning input for ref in debugging
         # If the match fails, no input is returned.
         self.statements.append(out)
     
-    def add_fact(self, s, r, o, edge_annotations = {}):
+    def add_fact(self, s, r, o, edge_annotations = {}, match_on = "iri"):
+
         """Add OWL fact to statement queue.
         s=subject individual iri, 
         r= relation (ObjectProperty) iri,
         o = object individual iri.
         Optionally add edge annotations specified as key value 
         pairs in dict."""
-        self._add_related_edge(s, r, o, stype = 'Individual', otype = 'Individual', 
-                               edge_annotations = edge_annotations) 
+        args = **locals()
+        args['stype'] = "Individual"
+        args['otype'] = "Individual"
+        self._add_related_edge(**args) 
                 
-    def add_anon_type_ax(self, s, r, o, edge_annotations = {}):
+    def add_anon_type_ax(self, s, r, o, edge_annotations = {}, match_on = "iri"):
         """Add anonymous OWL Type statement queue.
         s= subject individual iri, 
         r= relation (ObjectProperty) iri,
         o = object Class iri.
         Optionally add edge annotations specified as key value 
         pairs in dict."""
-        self._add_related_edge(s, r, o, stype = 'Individual', otype = 'Class', 
-                               edge_annotations = edge_annotations) 
+        args = **locals()
+        args['stype'] = "Individual"
+        args['otype'] = "Class"
+        self._add_related_edge(**args)
+    
         
-    def add_named_type_ax(self, s,o):
+    def add_named_type_ax(self, s,o, match_on = "iri"):
         self.statements.append(
-                               "MATCH (s:Individual { iri: '%s'} ), (o:Class { iri: '%s'} ) " \
+                               "MATCH (s:Individual {{ {match_on}: '{s}' ), (o:Class {{ {match_on}: '{o}' ) " \
                                "MERGE (s)-[:INSTANCEOF]-(o) " \
-                               "RETURN '%s', '%s'" % (s, o, s, o))
+                               "RETURN '{s}', '{o}'" % (**locals()))
                 
-    def add_anon_subClassOf_ax(self, s,r,o, edge_annotations = {}):
+    def add_anon_subClassOf_ax(self, s,r,o, edge_annotations = {}, match_on = "iri"):
         ### Should probably only support adding individual:individual edges in KB...
-        self._add_related_edge(s, r, o, stype = 'Individual', otype = 'Class', 
-                               edge_annotations = edge_annotations) 
+        args = **locals()
+        args['stype'] = "Class"
+        args['otype'] = "Class"
+        self._add_related_edge(**args)
 
     def add_named_subClassOf_ax(self, s,o):
         return "MATCH (s:Class { iri: '%s'} ), (o:Class { iri: '%s'} ) " \
