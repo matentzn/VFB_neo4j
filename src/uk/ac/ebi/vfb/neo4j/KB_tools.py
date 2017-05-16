@@ -119,10 +119,10 @@ class kb_owl_edge_writer(kb_writer):
         o = object individual iri.
         Optionally add edge annotations specified as key value 
         pairs in dict."""
-        args = **locals()
+        args = locals()
         args['stype'] = "Individual"
         args['otype'] = "Individual"
-        self._add_related_edge(**args) 
+        self._add_related_edge(self, **args) 
                 
     def add_anon_type_ax(self, s, r, o, edge_annotations = {}, match_on = "iri"):
         """Add anonymous OWL Type statement queue.
@@ -131,21 +131,21 @@ class kb_owl_edge_writer(kb_writer):
         o = object Class iri.
         Optionally add edge annotations specified as key value 
         pairs in dict."""
-        args = **locals()
+        args = locals()
         args['stype'] = "Individual"
         args['otype'] = "Class"
-        self._add_related_edge(**args)
+        self._add_related_edge(self, **args)
     
         
     def add_named_type_ax(self, s,o, match_on = "iri"):
         self.statements.append(
                                "MATCH (s:Individual {{ {match_on}: '{s}' ), (o:Class {{ {match_on}: '{o}' ) " \
                                "MERGE (s)-[:INSTANCEOF]-(o) " \
-                               "RETURN '{s}', '{o}'" % (**locals()))
+                               "RETURN '{s}', '{o}'".format(**locals()))
                 
     def add_anon_subClassOf_ax(self, s,r,o, edge_annotations = {}, match_on = "iri"):
         ### Should probably only support adding individual:individual edges in KB...
-        args = **locals()
+        args = locals()
         args['stype'] = "Class"
         args['otype'] = "Class"
         self._add_related_edge(**args)
