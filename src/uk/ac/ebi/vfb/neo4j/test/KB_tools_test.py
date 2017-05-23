@@ -30,7 +30,7 @@ class TestEdgeWriter(unittest.TestCase):
         s = ["MATCH (i1:Individual { iri : 'Aya' })-" \
        "[r1:Related { iri : 'http://fu.bar/loves' }]->" \
        "(i2:Individual { iri: 'Freddy' }) DELETE i1, r1, i2"]
-        s.append("(r1:Property { iri : 'http://fu.bar/loves'}) DELETE r1")       
+        s.append("MATCH (r1:Property { iri : 'http://fu.bar/loves'}) DELETE r1")       
         self.edge_writer.nc.commit_list(s)
         pass
 
@@ -88,7 +88,7 @@ class TestGenId(unittest.TestCase):
 
 
     def test_gen_id(self):
-        (k, ID) = gen_id(idp = 'HSNT', start = 101, length = 8, id_name = self.id_name)
+        (k, ID) = gen_id(idp = 'HSNT', ID = 101, length = 8, id_name = self.id_name)
         assert k == 'HSNT_00000104'
 
 if __name__ == "__main__":
