@@ -8,7 +8,7 @@ import re
 import json
 #import psycopg2
 import requests
-from .neo4j_tools import neo4j_connect
+from .neo4j_tools import neo4j_connect, results_2_dict_list
 from .SQL_tools import get_fb_conn, dict_cursor
 from ..curie_tools import map_iri
 
@@ -25,6 +25,21 @@ from ..curie_tools import map_iri
 
 # TODO: Add lookup for attributes -> Properties.  Ideally this would be with a specific cypher label for APs.
 # May want to follow a prefixed pattern to indicate OWL compatible APs.
+
+def gen_id(idp, ID, length, id_name):
+    """ARG1: idp (string), 
+    ARG 2 starting ID number (int), 
+    ARG3, length of numeric portion ID, 
+    ARG4 an id:name hash"""
+    def gen_key(ID, length):  # This function is limited to the scope of the gen_id function.
+        dl = len(str(ID)) # coerce int to string.
+        k = idp+'_'+(length - dl)*'0'+str(ID)
+        return k
+    k = gen_key (ID, length)
+    while k in id_name:
+        ID += 1
+        k = gen_key(ID, length)
+    return (k, ID) # useful to return ID to use for next round.
 
 class kb_writer (object):
       
@@ -180,7 +195,26 @@ class node_importer(kb_writer):
     """A class wrapping methods for updating imported entities in the KB,
     e.g. from ontologies, FlyBase, CATMAID.
     Constructor: owl_import_updater(endpoint, usr, pwd)
-    """   
+    """
+    
+    def configure_iri_gen(self, idp, start, acc_length, base):
+        self.acc_length = acc_length
+        self.idp = idp
+        self.id_name = {}
+        self.base = base
+        self.start = start
+        self.statements.append("MATCH (i:Individual) WHERE i.short_form =~ '%s_\d{$d}' RETURN i.short_form , i.label" % (idp, acc_length))
+        results = results_2_dict_list(self.commit())
+        for r in results:
+            self.id_name[r['short_form']] = r['label']
+
+    
+    def set_default_iri_gen_config(self):
+        self.configure_iri_gen(idp = 'VFB', acc_length = 8, base = map_iri('vfb'))
+        
+    def iri_gen(self, start):
+        return self.base + gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name)
+        
     def add_constraints(self, uniqs= {}, indexes = {} ):
         """Specify addition uniqs and indexes via dicts.
         { label : [attributes] } """
@@ -279,7 +313,6 @@ class node_importer(kb_writer):
             if diff:
                 warnings.warn("The following features did not match any known " \
                               " feature in FlyBase: %s" % str(diff))
-               
             cursor.close()
             fbc.close()
             # How to set warning for case where nothing added?

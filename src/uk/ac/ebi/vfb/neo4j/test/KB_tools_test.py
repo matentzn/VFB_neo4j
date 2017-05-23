@@ -4,7 +4,7 @@ Created on Mar 8, 2017
 @author: davidos
 '''
 import unittest
-from ..KB_tools import kb_owl_edge_writer, node_importer
+from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id
 
 
 class TestEdgeWriter(unittest.TestCase):
@@ -77,6 +77,19 @@ class TestNodeImporter(unittest.TestCase):
 #        test?
         pass
         
+        
+class TestGenId(unittest.TestCase):
+    
+    def setUp(self):
+        self.id_name = {}
+        self.id_name['HSNT_00000101'] = 'head'
+        self.id_name['HSNT_00000102'] = 'shoulders'
+        self.id_name['HSNT_00000103']= 'knees'
+
+
+    def test_gen_id(self):
+        (k, ID) = gen_id(idp = 'HSNT', start = 101, length = 8, id_name = self.id_name)
+        assert k == 'HSNT_00000104'
 
 if __name__ == "__main__":
     unittest.main()
