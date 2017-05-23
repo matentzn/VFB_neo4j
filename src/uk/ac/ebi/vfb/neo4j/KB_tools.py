@@ -34,7 +34,7 @@ class kb_writer (object):
         self.output = []
         self.properties = set([])
         
-    def commit(self, verbose = False, chunk_length = 5000):
+    def _commit(self, verbose = False, chunk_length = 5000):
         """Commits Cypher statements stored in object.
         Flushes existing statement list.
         Returns REST API output.
@@ -44,6 +44,10 @@ class kb_writer (object):
                                       chunk_length = chunk_length)
         self.statements = []
         return self.output
+
+    def commit(self, verbose = False, chunk_length = 5000):
+        self._commit(verbose, chunk_length)
+    
 
     def escape_string(self, strng):
         if type(strng) == str:
@@ -108,7 +112,9 @@ class kb_owl_edge_writer(kb_writer):
         out += self._set_attributes_from_dict('re', edge_annotations)        
         out += "SET re.label = rn.label SET re.short_form = rn.short_form "
         out += "RETURN '%s', '%s', '%s' " % (s,r,o) # returning input for ref in debugging
-        # If the match fails, no input is returned.
+        # If the match fails, no rows are returned, but s,r,o are column headers, 
+        # so can be used for warnings/exceptions
+        
         self.statements.append(out)
     
     def add_fact(self, s, r, o, edge_annotations = {}, match_on = "iri"):
@@ -152,6 +158,11 @@ class kb_owl_edge_writer(kb_writer):
                 "MERGE (s)-[:SUBCLASSOF]-(o)" % (s, o)            
     
     
+    def commit(self, verbose=False, chunk_length=5000):
+        self._commit(verbose, chunk_length)
+        self.test_edge_addition()
+        
+        
     def test_edge_addition(self):
         """Tests lists of return values from RESTFUL API for edge creation
          by checking "relationships_created": as a boolean, generates warning
@@ -233,22 +244,29 @@ class node_importer(kb_writer):
         ### For effeciency - could try concatenating statements.
             
         
-    def update_from_flybase(self, load_list = []):            
+    def update_from_flybase(self, load_list):            
+            """
+            Add feature nodes to KB from FlyBase
+            load_list = list of fb feature.uniquename strings.
+            """
+            
             fbc = get_fb_conn()
             cursor = fbc.cursor()
-            # STUB
+            
             query = "SELECT f.uniquename, f.name, f.is_obsolete from feature f " \
             "JOIN cvterm typ on f.type_id = typ.cvterm_id " 
-            if load_list:
-                load_list_string = "'" + "','".join(load_list) + "'"
-                query += "WHERE f.uniquename in (%s) " % load_list_string
-            else:
-                query += "WHERE typ.name in ('gene', " \
-                "'transposable_element_insertion_site', 'transgenic_transposon') "
+            # if load_list:
+            load_list_string = "'" + "','".join(load_list) + "'"
+            query += "WHERE f.uniquename in (%s) " % load_list_string
+#             else:
+#                 query += "WHERE typ.name in ('gene', " \
+#                 "'transposable_element_insertion_site', 'transgenic_transposon') "
             
             cursor.execute(query)
             dc = dict_cursor(cursor)
+            matched = set()
             for d in dc:
+                matched.add(d['uniquename'])
                 IRI = map_iri('fb') +  d['uniquename']
                 attribute_dict = {}
                 attribute_dict['label'] = d['name']               
@@ -257,8 +275,14 @@ class node_importer(kb_writer):
                 self.add_node(labels = ['Class', 'Feature'],
                               IRI = IRI,
                               attribute_dict = attribute_dict)
+            diff = set(load_list) - matched
+            if diff:
+                warnings.warn("The following features did not match any known " \
+                              " feature in FlyBase: %s" % str(diff))
+               
             cursor.close()
             fbc.close()
+            # How to set warning for case where nothing added?
     
     def update_current_features_from_FlyBase(self):
         s = ["MATCH (f:Feature:Class) return f.short_form"]
