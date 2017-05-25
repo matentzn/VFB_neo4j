@@ -1,53 +1,53 @@
 subject	relation	object
-ChaMARCM-F000138_seg002		lobula columnar neuron LC9
-ChaMARCM-F000862_seg001		lobula columnar neuron LC11
-ChaMARCM-F000683_seg003		lobula columnar neuron LC11
-GadMARCM-F000206_seg002		lobula columnar neuron LC11
-ChaMARCM-F000094_seg001		lobula columnar neuron LC12
-DvGlutMARCM-F367_seg1		lobula columnar neuron LC12
-DvGlutMARCM-F1268_seg1		lobula columnar neuron LC12
-ChaMARCM-F001467_seg003		lobula columnar neuron LC15
-ChaMARCM-F001472_seg001		lobula columnar neuron LC15
-ChaMARCM-F001346_seg001		lobula columnar neuron LC16
-FruMARCM-F000706_seg002		lobula columnar neuron LC16
-DvGlutMARCM-F003840_seg001		lobula columnar neuron LC16
-ChaMARCM-F000111_seg001		lobula columnar neuron LC17
-ChaMARCM-F000008_seg001		lobula columnar neuron LC17
-GadMARCM-F000266_seg001		lobula columnar neuron LC17
-5HT1bMARCM-F000026_seg001		lobula columnar neuron LC18
-ChaMARCM-F001394_seg001		lobula columnar neuron LC18
-FruMARCM-F000817_seg001		lobula columnar neuron LC18
-GadMARCM-F000203_seg001		lobula columnar neuron LC18
-DvGlutMARCM-F004346_seg002		lobula columnar neuron LC20
-DvGlutMARCM-F002796_seg001		lobula columnar neuron LC20
-GadMARCM-F000380_seg001		lobula columnar neuron LC20
-GadMARCM-F000492_seg002		lobula columnar neuron LC21
-ChaMARCM-F000763_seg001		lobula columnar neuron LC21
-GadMARCM-F000268_seg001		lobula columnar neuron LC22
-ChaMARCM-F000888_seg001		lobula columnar neuron LC22
-DvGlutMARCM-F003578_seg004		lobula columnar neuron LC22
-GadMARCM-F000215_seg001		lobula complex columnar neuron LPLC4
-ChaMARCM-F001328_seg001		lobula complex columnar neuron LPLC4
-ChaMARCM-F000164_seg003		lobula complex columnar neuron LPLC4
-ChaMARCM-F001270_seg002		lobula columnar neuron LC24
-ChaMARCM-F000444_seg001		lobula columnar neuron LC24
-ChaMARCM-F000509_seg001		lobula columnar neuron LC24
-ChaMARCM-F001095_seg001		lobula complex columnar neuron LPLC1
-ChaMARCM-F000133_seg002		lobula complex columnar neuron LPLC1
-ChaMARCM-F001348_seg002		lobula complex columnar neuron LPLC2
-ChaMARCM-F000310_seg001		lobula complex columnar neuron LPLC2
-ChaMARCM-F000374_seg002		lobula complex columnar neuron LPLC3
-ChaMARCM-F000011_seg001		lobula complex columnar neuron LPLC3
-GadMARCM-F000378_seg001		lobula complex columnar neuron LPLC3
-FruMARCM-F000396_seg001		lobula complex columnar neuron LPLC3
-DvGlutMARCM-F003494_seg001		lobula plate columnar neuron LPC1
-ChaMARCM-F001263_seg001		lobula plate columnar neuron LPC1
-FruMARCM-F001811_seg001		lobula plate columnar neuron LPC1
-GadMARCM-F000224_seg001		medulla columnar neuron MC61
-ChaMARCM-F001145_seg001		medulla columnar neuron MC61
-ChaMARCM-F000164_seg001		medulla columnar neuron MC61
-ChaMARCM-F000520_seg001		medulla columnar neuron MC63
-THMARCM-683F_seg1		lamina tangential neuron
-TPHMARCM-031F_seg1		lamina tangential neuron
-THMARCM-038F_seg1		lamina tangential neuron
-ChaMARCM-F001550_seg001		lamina tangential neuron
+Cha-F-000028		lobula columnar neuron LC9
+Cha-F-000153		lobula columnar neuron LC11
+Cha-F-200132		lobula columnar neuron LC11
+Gad1-F-300060		lobula columnar neuron LC11
+Cha-F-000015		lobula columnar neuron LC12
+VGlut-F-000056		lobula columnar neuron LC12
+VGlut-F-400347		lobula columnar neuron LC12
+Cha-F-000361		lobula columnar neuron LC15
+Cha-F-100351		lobula columnar neuron LC15
+Cha-F-000316		lobula columnar neuron LC16
+fru-F-000032		lobula columnar neuron LC16
+VGlut-F-000603		lobula columnar neuron LC16
+Cha-F-100017		lobula columnar neuron LC17
+Cha-F-000004		lobula columnar neuron LC17
+Gad1-F-000025		lobula columnar neuron LC17
+5-HT1B-F-500016		lobula columnar neuron LC18
+Cha-F-000333		lobula columnar neuron LC18
+fru-F-200061		lobula columnar neuron LC18
+Gad1-F-300054		lobula columnar neuron LC18
+VGlut-F-200564		lobula columnar neuron LC20
+VGlut-F-700163		lobula columnar neuron LC20
+Gad1-F-200101		lobula columnar neuron LC20
+Gad1-F-400102		lobula columnar neuron LC21
+Cha-F-300208		lobula columnar neuron LC21
+Gad1-F-900022		lobula columnar neuron LC22
+Cha-F-600134		lobula columnar neuron LC22
+VGlut-F-500700		lobula columnar neuron LC22
+Gad1-F-200058		lobula complex columnar neuron LPLC4
+Cha-F-200302		lobula complex columnar neuron LPLC4
+Cha-F-200028		lobula complex columnar neuron LPLC4
+Cha-F-000283		lobula columnar neuron LC24
+Cha-F-200073		lobula columnar neuron LC24
+Cha-F-400116		lobula columnar neuron LC24
+Cha-F-200219		lobula complex columnar neuron LPLC1
+Cha-F-300035		lobula complex columnar neuron LPLC1
+Cha-F-100287		lobula complex columnar neuron LPLC2
+Cha-F-300111		lobula complex columnar neuron LPLC2
+Cha-F-100027		lobula complex columnar neuron LPLC3
+Cha-F-300004		lobula complex columnar neuron LPLC3
+Gad1-F-200099		lobula complex columnar neuron LPLC3
+fru-F-500009		lobula complex columnar neuron LPLC3
+VGlut-F-700361		lobula plate columnar neuron LPC1
+Cha-F-000272		lobula plate columnar neuron LPC1
+fru-F-000101		lobula plate columnar neuron LPC1
+Gad1-F-400023		medulla columnar neuron MC61
+Cha-F-300285		medulla columnar neuron MC61
+Cha-F-200026		medulla columnar neuron MC61
+Cha-F-200103		medulla columnar neuron MC63
+TH-F-200107		lamina tangential neuron
+Trh-F-100019		lamina tangential neuron
+TH-F-100004		lamina tangential neuron
+Cha-F-300333		lamina tangential neuron
