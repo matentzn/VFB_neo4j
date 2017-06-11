@@ -66,9 +66,9 @@ for k,v in label_types.items():
     label_additions.append("MATCH (n)-[r:SUBCLASSOF|INSTANCEOF*]->(n2:Class) " \
                            "WHERE n2.label = '%s' SET n:%s, n2:%s" % (v, k, k))
 
-label_additions.append("MATCH (image:Individual)-[:Related { label: 'has_background_channel'}]" \
-                       "->(channel:Individual)-[:Related { label: 'depicts'} ]->(anat:Individual) " \
-                       "SET anat:Template")
+label_additions.append("MATCH (a:Individual)<-[d:Related]-(ch:Individual)-[r:Related]->(fbbi:Class) " \
+                       "WHERE fbbi.label = 'computer graphic' and d.short_form = 'depicts' " \
+                       "SET a:Painted_domain;")
 
 nc.commit_list(label_additions)
 
