@@ -7,6 +7,7 @@ import unittest
 from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id
 from ...curie_tools import map_iri
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list
+from pathlib import Path
 
 class TestEdgeWriter(unittest.TestCase):
 
@@ -74,7 +75,12 @@ class TestNodeImporter(unittest.TestCase):
 
     
     def test_update_from_obograph(self):
-        self.ni.update_from_obograph(file_path = "resources/vfb_ext.json")
+        # Adding this to cope with odd issues with file_path when running python modules on different systems
+        p = Path("resources/vfb_ext.json")
+        if p.is_file():
+            self.ni.update_from_obograph(file_path = "resources/vfb_ext.json")
+        else: 
+            self.ni.update_from_obograph(file_path = "uk/ac/ebi/vfb/neo4j/test/resources/vfb_ext.json")
         self.ni.commit()
         result = self.ni.nc.commit_list(["MATCH (p:Property) WHERE p.iri = 'http://purl.obolibrary.org/obo/RO_0002350' RETURN p.label as label" ])
         dc = results_2_dict_list(result)
