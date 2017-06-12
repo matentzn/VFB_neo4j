@@ -35,11 +35,12 @@ def gen_id(idp, ID, length, id_name):
         dl = len(str(ID)) # coerce int to string.
         k = idp+'_'+(length - dl)*'0'+str(ID)
         return k
+    
     k = gen_key (ID, length)
     while k in id_name:
         ID += 1
         k = gen_key(ID, length)
-    return (k, ID) # useful to return ID to use for next round.
+    return {'short_form' : k, 'acc_int' : ID} # useful to return ID to use for next round.
 
 class kb_writer (object):
       
@@ -61,7 +62,7 @@ class kb_writer (object):
         return self.output
 
     def commit(self, verbose = False, chunk_length = 5000):
-        self._commit(verbose, chunk_length)
+        return self._commit(verbose, chunk_length)
     
 
     def escape_string(self, strng):
@@ -174,6 +175,7 @@ class kb_owl_edge_writer(kb_writer):
     
     
     def commit(self, verbose=False, chunk_length=5000):
+        """Commit and test edge addition"""
         self._commit(verbose, chunk_length)
         self.test_edge_addition()
         
@@ -183,7 +185,7 @@ class kb_owl_edge_writer(kb_writer):
          by checking "relationships_created": as a boolean, generates warning
         """
        
-        missed_edges = [x['columns'] for x in self.output[0] if not x['data']]
+        missed_edges = [x['columns'] for x in self.output if not x['data']]
         if missed_edges:
             for e in missed_edges:
                 warnings.warn("Edge not added. Something doesn't match here: %s" % str(e))
@@ -197,23 +199,32 @@ class node_importer(kb_writer):
     Constructor: owl_import_updater(endpoint, usr, pwd)
     """
     
-    def configure_iri_gen(self, idp, start, acc_length, base):
+    def configure_iri_gen(self, idp, acc_length, base):
         self.acc_length = acc_length
         self.idp = idp
         self.id_name = {}
         self.base = base
-        self.start = start
-        self.statements.append("MATCH (i:Individual) WHERE i.short_form =~ '%s_\d{$d}' RETURN i.short_form , i.label" % (idp, acc_length))
-        results = results_2_dict_list(self.commit())
-        for r in results:
-            self.id_name[r['short_form']] = r['label']
+        self.statements.append("MATCH (i:Individual) WHERE i.short_form =~ '%s_[0-9]{%d}' " \
+                               "RETURN i.short_form as short_form, i.label as label" % (idp, acc_length)) # Note POSIX regex rqd       
+        r = self.commit()
+        if r:
+            results = results_2_dict_list(r)
+            for res in results:
+                self.id_name[res['short_form']] = res['label']
+            return True
+        else:
+            warnings.warn("No ids match the pattern %s_%s" % (idp, 'n'*acc_length))
+            return False
+            
 
-    
     def set_default_iri_gen_config(self):
         self.configure_iri_gen(idp = 'VFB', acc_length = 8, base = map_iri('vfb'))
         
     def iri_gen(self, start):
-        return self.base + gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name)
+        ID = gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name)
+        short_form = ID['short_form']
+        iri =  self.base + short_form
+        return { 'iri': iri, 'short_form': short_form}
         
     def add_constraints(self, uniqs= {}, indexes = {} ):
         """Specify addition uniqs and indexes via dicts.

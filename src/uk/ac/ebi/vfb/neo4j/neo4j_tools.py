@@ -43,7 +43,7 @@ class neo4j_connect():
             - statements = list of cypher statements as strings
             - return_graphs, optionally specify graphs to be returned in JSON results.
         Errors prompt warnings, not exceptions, and cause return  = FALSE.
-        Returns results (json, list) or False if any errors are encountered."""
+        Returns results list or False if any errors are encountered."""
         cstatements = []
         if return_graphs:
             for s in statements:
@@ -66,7 +66,7 @@ class neo4j_connect():
         cypher_statments = list of cypher statements as strings
         base_uri = base URL for neo4J DB
         Default chunk size = 100 statements. This can be overridden by KWARG chunk_length.
-        Doesn't support returning graphs.
+        Returns a list of results.
         """
         chunked_statements = chunks(l = statements, n=chunk_length)
         chunk_results = []
@@ -74,7 +74,10 @@ class neo4j_connect():
             if verbose:
                 print("Processing chunk starting with: %s" % c[0])
             r = self.commit_list(c)
-            chunk_results.append(r)
+            if type(r) == list:
+                chunk_results.extend(r)
+            else:
+                chunk_results.append(r)
         return chunk_results
         
     def rest_return_check(self, response):
@@ -114,8 +117,10 @@ def results_2_dict_list(results):
     """Takes JSON results from a neo4J query and turns them into a list of dicts.
     """
     dc = []
-    for n in results[0]['data']:
-        dc.append(dict(zip(results[0]['columns'], n['row'])))
+    for n in results:
+        if n:
+            for d in n['data']:
+                dc.append(dict(zip(n['columns'], d['row'])))
     return dc
 
 def escape_string(strng):
