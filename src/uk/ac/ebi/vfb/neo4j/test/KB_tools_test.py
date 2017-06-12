@@ -6,6 +6,7 @@ Created on Mar 8, 2017
 import unittest
 from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id
 from ...curie_tools import map_iri
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list
 
 class TestEdgeWriter(unittest.TestCase):
 
@@ -58,10 +59,7 @@ class TestEdgeWriter(unittest.TestCase):
         
     def tearDown(self):
         # TODO - add some deletions here
-        s = ["MATCH (i1:Individual { iri : 'Aya' })-" \
-       "[r1:Related { iri : 'http://fu.bar/loves' }]->" \
-       "(i2:Individual { iri: 'Freddy' }) DELETE i1, r1, i2"]
-        s.append("MATCH (r1:Property { iri : 'http://fu.bar/loves'}) DELETE r1")       
+        s = ["MATCH (n) DETACH DELETE n"]      
         self.edge_writer.nc.commit_list(s)
         pass
         
@@ -69,16 +67,22 @@ class TestNodeImporter(unittest.TestCase):
 
     def setUp(self):
         self.ni = node_importer('http://localhost:7474', 'neo4j', 'neo4j')
+        ### Maybe need node addition test first?!
         self.ni.add_node(labels = ['Individual'], IRI = map_iri('vfb') + "VFB_00000001", 
                          attribute_dict =  { 'short_form' : "VFB_00000001" })
         self.ni.commit()
 
     
     def test_update_from_obograph(self):
-#        self.ni.update_from_obograph(self, url = 'https://raw.githubusercontent.com/VirtualFlyBrain/VFB_owl/master/src/owl/vfb_ext.owl')
-#        self.ni.commit()
-#        test?
-        pass
+        self.ni.update_from_obograph(file_path = "resources/vfb_ext.json")
+        self.ni.commit()
+        result = self.ni.nc.commit_list(["MATCH (p:Property) WHERE p.iri = 'http://purl.obolibrary.org/obo/RO_0002350' RETURN p.label as label" ])
+        dc = results_2_dict_list(result)
+        assert dc[0]['label'] == 'member_of'
+        
+        result = self.ni.nc.commit_list(["MATCH (p:Class) WHERE p.iri = 'http://purl.obolibrary.org/obo/fbbt/vfb/VFB_10000005' RETURN p.label as label" ])
+        dc = results_2_dict_list(result)
+        assert dc[0]['label'] == 'cluster'
     
     def test_default_id_gen(self):
         self.ni.set_default_iri_gen_config()
@@ -86,8 +90,8 @@ class TestNodeImporter(unittest.TestCase):
         assert i['short_form'] == 'VFB_00000002'
     
     def tearDown(self):
-        self.ni.nc.commit_list(statements = ["MATCH (f:Individual { short_form : 'VFB_00000001' }) " \
-                                             "DELETE f"])
+        self.ni.nc.commit_list(statements = ["MATCH (n) " \
+                                             "DETACH DELETE n"])
         
 class TestGenId(unittest.TestCase):
     
