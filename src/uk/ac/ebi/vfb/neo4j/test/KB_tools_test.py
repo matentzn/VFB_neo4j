@@ -52,9 +52,9 @@ class TestEdgeWriter(unittest.TestCase):
         self.edge_writer.commit()
         assert self.edge_writer.test_edge_addition() == True        
         r1 = self.edge_writer.nc.commit_list(["MATCH (i1:Individual { iri : 'Aya' })-" \
-        "[r1:Related { iri : 'http://fu.bar/loves' }]->" \
-        "(i2:Individual { iri: 'Freddy' }) RETURN r1.label"])
-        assert r1[0]['data'][0]['row'][0] == 'loves'
+                                              "[r]->" \
+                                              "(i2:Class { iri: 'Person' } ) RETURN type(r) AS r"])
+        assert r1[0]['data'][0]['row'][0] == 'INSTANCEOF'
         
     def tearDown(self):
         # TODO - add some deletions here
