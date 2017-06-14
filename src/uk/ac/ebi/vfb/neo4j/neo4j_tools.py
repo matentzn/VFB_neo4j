@@ -4,6 +4,9 @@ import requests
 import json
 import warnings
 import re
+import time
+import datetime
+from datetime import datetime
 #import token
 
 
@@ -28,8 +31,10 @@ def chunks(l, n):
         
 class neo4j_connect():
     """Thin layer over REST API to hold connection details, 
-    handle multi-statement POST queries."""
-    # In order to support returning graphs, we need 
+    handle multi-statement POST queries, return results and report errors."""
+    # Return results might be better handled in the case of multiple statements - especially when chunked.
+    # Not connection with original query is kept.
+    
     
     def __init__(self, base_uri, usr, pwd):
         self.base_uri=base_uri
@@ -43,7 +48,7 @@ class neo4j_connect():
             - statements = list of cypher statements as strings
             - return_graphs, optionally specify graphs to be returned in JSON results.
         Errors prompt warnings, not exceptions, and cause return  = FALSE.
-        Returns results list or False if any errors are encountered."""
+        Returns results list of results or False if any errors are encountered."""
         cstatements = []
         if return_graphs:
             for s in statements:
@@ -65,19 +70,36 @@ class neo4j_connect():
         """Commit a list of statements to neo4J DB via REST API, split into chunks.
         cypher_statments = list of cypher statements as strings
         base_uri = base URL for neo4J DB
-        Default chunk size = 100 statements. This can be overridden by KWARG chunk_length.
-        Returns a list of results.
+        Default chunk size = 1000 statements. This can be overridden by KWARG chunk_length.
+        Returns a list of results. Output is indistinguishable from output of commit_list (i.e. 
+        chunking is not reflected in results list).
         """
         chunked_statements = chunks(l = statements, n=chunk_length)
         chunk_results = []
+        i = 1
+        c_no = len(statements)/chunk_length
         for c in chunked_statements:
             if verbose:
-                print("Processing chunk starting with: %s" % c[0])
+                start_time = time.time()
+                print("Processing chunk of %d of %d starting with: %s" % (i,
+                                                                          c_no, 
+                                                                          c[0]))
             r = self.commit_list(c)
+            if verbose:
+                t = time.time() - start_time
+                print("Processing took %d seconds for %s statements" % (t,len(c)))
+                print("Estimated time to completion: %s." % str(datetime.timedelta(
+                                                                                   seconds = (
+                                                                                              t*(c_no - i)
+                                                                                              )
+                                                                                   )
+                                                                )
+                      )
             if type(r) == list:
                 chunk_results.extend(r)
             else:
                 chunk_results.append(r)
+            i += 1
         return chunk_results
         
     def rest_return_check(self, response):
@@ -118,6 +140,7 @@ def results_2_dict_list(results):
     """
     dc = []
     for n in results:
+        # Add conditional to skip any failures
         if n:
             for d in n['data']:
                 dc.append(dict(zip(n['columns'], d['row'])))
