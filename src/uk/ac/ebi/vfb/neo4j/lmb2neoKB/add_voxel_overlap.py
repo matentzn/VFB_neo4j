@@ -12,7 +12,6 @@ from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list, chunks
 import sys
 import warnings
 import re
-import time
 
 
 
@@ -124,7 +123,7 @@ def main():
     # If key has no _L/R ending map to voxel_overlap_center.
     # (This may not be perfect, but will do for now).
     print ("Processing facts for addition.")
-    for o in neuron_neuropil_overlaps[8000:]:
+    for o in neuron_neuropil_overlaps:
         neuron_channel = neuron2channel[o['shortFormID']]
         for k,v in o.items():
             ad = {} # attribute for edge
