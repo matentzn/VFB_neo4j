@@ -5,8 +5,7 @@ import json
 import warnings
 import re
 import time
-import datetime
-from datetime import datetime
+from datetime import datetime, timedelta
 #import token
 
 
@@ -88,7 +87,7 @@ class neo4j_connect():
             if verbose:
                 t = time.time() - start_time
                 print("Processing took %d seconds for %s statements" % (t,len(c)))
-                print("Estimated time to completion: %s." % str(datetime.timedelta(
+                print("Estimated time to completion: %s." % str(timedelta(
                                                                                    seconds = (
                                                                                               t*(c_no - i)
                                                                                               )
