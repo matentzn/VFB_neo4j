@@ -5,9 +5,9 @@ Created on Mar 6, 2017
 
 '''
 
-from .lmb_query_tools import get_conn
-from ..KB_tools import kb_owl_edge_writer
-from ...curie_tools import map_iri
+from uk.ac.ebi.vfb.neo4j.lmb2neoKB.lmb_query_tools import get_conn
+from uk.ac.ebi.vfb.neo4j.KB_tools import kb_owl_edge_writer
+from uk.ac.ebi.vfb.curie_tools import map_iri
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list, chunks
 import sys
 import warnings
