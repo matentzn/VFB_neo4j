@@ -108,14 +108,14 @@ def main():
     obo = map_iri('obo')
     edge_writer = kb_owl_edge_writer(endpoint=sys.argv[1], usr=sys.argv[2], pwd=sys.argv[3])
     mg = map_gen(cursor, edge_writer)
-    cursor.close()
-    c.close() 
     print("BrainName abbv channel mapping")
     BN_dict = mg.gen_BrainName_mapping() # {'AL_L': 'http://virtualflybrain.org/reports/VFBc_00030629', 'short_form': 'VFB_00011604' ...
     print("gen neuron neuropil mapping")
     neuron_neuropil_overlaps = mg.neuron_neuropil_overlaps # {'SMP_L': 11670, 
     print("Gen neuron to channel mapping")
     neuron2channel = mg.gen_neuron2channel() # neuron2channel[r['neuron_ind.short_form']] = r['neuron_channel.iri]']
+    cursor.close()
+    c.close() 
     
     # Iterate over neuron_neuropil_overlaps.  
     # Map neuron to a channel via neuron2channel
