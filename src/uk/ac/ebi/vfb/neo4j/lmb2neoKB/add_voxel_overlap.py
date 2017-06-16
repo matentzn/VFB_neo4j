@@ -108,6 +108,8 @@ def main():
     obo = map_iri('obo')
     edge_writer = kb_owl_edge_writer(endpoint=sys.argv[1], usr=sys.argv[2], pwd=sys.argv[3])
     mg = map_gen(cursor, edge_writer)
+    cursor.close()
+    c.close() 
     print("BrainName abbv channel mapping")
     BN_dict = mg.gen_BrainName_mapping() # {'AL_L': 'http://virtualflybrain.org/reports/VFBc_00030629', 'short_form': 'VFB_00011604' ...
     print("gen neuron neuropil mapping")
@@ -145,8 +147,8 @@ def main():
     
     print("Processing %d statements" % len(edge_writer.statements))
     edge_writer.commit(verbose = True, chunk_length = 2000)
-    cursor.close()
-    c.close()        
+    
+           
                                  
 
 if __name__ == "__main__":
