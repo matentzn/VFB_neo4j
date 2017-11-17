@@ -53,7 +53,8 @@ class kb_writer (object):
         Flushes existing statement list.
         Returns REST API output.
         Optionally set verbosity and chunk length for commits."""
-        self.output = self.nc.commit_list_in_chunks(statements = self.statements, 
+        self.output = self.nc.commit_list_in_chunks(
+                                      statements  = self.statements, 
                                       verbose = verbose, 
                                       chunk_length = chunk_length)
         self.statements = []
@@ -76,7 +77,8 @@ class kb_writer (object):
         """Generates CYPHER `SET` sub-clauses 
         from key value pairs in a dict (attribute_dict).
         Values must be int, float, string or list.
-        var = variable name in CYPHER statement."""
+        var = variable name in CYPHER statement.
+        """
         # Note - may be able to simplify this by converting to a map and passing that.
         out = ''
         for k,v in attribute_dict.items():
@@ -94,6 +96,7 @@ class kb_writer (object):
                 warnings.warn("Can't use a %s as an attribute value in Cypher. Key %s Value :%s" 
                               % (type(v), k, (str(v))))
         return out
+
 
 class kb_owl_edge_writer(kb_writer):
     """A class wrapping methods for updating imported entities in the KB.
@@ -117,6 +120,7 @@ class kb_owl_edge_writer(kb_writer):
             return False
             
     def _add_related_edge(self, s, r, o, stype, otype, edge_annotations = {}, match_on = "iri"):
+        # running edge check for each edge addn - safe by slooow.
         if match_on not in ['iri', 'label', 'short_form']:
             raise Exception("Illegal match property '%s'. " \
                             "Allowed match properties are 'iri', 'label', 'short_form'" % match_on)
@@ -245,15 +249,24 @@ class node_importer(kb_writer):
         self.commit()
             
     def add_node(self, labels, IRI, attribute_dict = {}):
-        statement = "MERGE (n:%s { iri: '%s' }) " % ((':'.join(labels)), IRI)
-        statement += self._set_attributes_from_dict(var = 'n', attribute_dict = attribute_dict)
+        """Adds or updates a node.
+        Node uniqueness specified by IRI + labels.
+        Adds/Updates attributes to those specified in the attribute dict
+        """
+        statement = "MERGE (n:%s { iri: '%s' }) " % ((':'.join(labels)), 
+                                                     IRI)
+        statement += self._set_attributes_from_dict(var = 'n', 
+                                                    attribute_dict = attribute_dict)
         self.statements.append(statement)
+
     
     def update_from_obograph(self, file_path = '', url = ''):
-        """Update property and class nodes from an OBOgraph file"""
-        """(currently does not distinguish OPs from APs!)
+        """Update property and class nodes from an OBOgraph file
+        (currently does not distinguish OPs from APs!)
+        Only updates from pimary graph (i.e. ignores imports)
         """
-        
+        ## Get JSON, assuming only primary graph should be used for updating
+        ## ie: imports ignored.
         if file_path:   
             f = open(file_path, 'r')
             obographs = json.loads(f.read())
@@ -263,6 +276,10 @@ class node_importer(kb_writer):
             if r.status_code == 200:
                 obographs = r.json()
                 primary_graph = obographs['graphs'][0] # Add a check for success here!
+            else:
+                warnings.warn("URL connection issue %s %s" % (r.status_code, 
+                                                              r.reason))
+                return False
         else:
             warnings.warn('Please provide a file_path or a URL')
             return False
@@ -277,15 +294,29 @@ class node_importer(kb_writer):
                     labels = ['Property']
                 else:
                     continue
+            # Split URL -> base & short_form
             m = re.findall('.+(#|/)(.+?)$', node['id'])
             attribute_dict['short_form'] =  m[0][1]
             if 'lbl' in node.keys(): attribute_dict['label']=  node['lbl']
             if 'meta' in node.keys():
                 if 'deprecated' in node['meta'].keys():
                     attribute_dict['is_obsolete'] = node['meta']['deprecated']
+            ## Update nodes.
             self.add_node(labels, IRI, attribute_dict)
-        ### For effeciency - could try concatenating statements.
-            
+        self.check_for_obsolete_nodes_in_use()
+
+    def check_for_obsolete_nodes_in_use(self):
+        m = "MATCH (c:Class)-[r]-(fu) WHERE c.is_obsolete=True " \
+            "RETURN c.label, c.IRI"
+        q = results_2_dict_list(self.nc.commit_list([m]))
+        if q:
+            for r in q:
+                warnings.warn("%s, %s is obsolete but in use." % 
+                              (r['c.label'], r['c.IRI']))
+            return False
+        else:
+            print("No obsolete nodes in use.")
+            return True
         
     def update_from_flybase(self, load_list):            
             """
@@ -331,6 +362,61 @@ class node_importer(kb_writer):
         r = self.nc.commit_list(s)    
         features = [result['row'][0] for result in r[0]['data']]
         self.update_from_flybase(load_list = features)
+        
+    def migrate_features_to_new_ids(self, d):
+        """STUB"""
+        return
+    
+class KB_pattern_writer(object):
+    
+    def __init__(self, endpoint, usr, pwd):
+        self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
+        self.ni = node_importer(endpoint, usr, pwd)
+        
+    def add_anatomy_image_set(self, 
+                                  image_type, 
+                                  label, 
+                                  start,
+                                  template,
+                                  anatomical_type = '',
+                                  attributes = {}):
+        """Adds typed inds for an anatomical individual and channel, 
+        linked to each other and to the specified template.  
+        The label argument is used to set the label for the anatomical 
+        individual and to generate a derived label for the channel. Start
+        specifies the starting range for adding new accessions. 
+        Optionally specify additional attributes for the anatomical 
+        individual as a dict."""
+        
+        # TBD Should this really all run on IRIs?
+        
+        anat_iri = self.iri_gen(start)['iri']
+        attributes['label'] = label
+        a = self.ni.add_node(labels = ['Individual'], 
+                          IRI = anat_iri,
+                          attribute_dict = attributes)
+        channel_iri = self.iri_gen(start)['iri']
+        i = self.ni.add_node(labels = ['Individual'], 
+                          IRI = channel_iri,
+                          attribute_dict= { 'label' : label + '_c' } )
+        self.ni.commit()
+        # Add a query to look up template channel
+        q = "MATCH (c:Individual)-[:Related { short_form = 'depicts' }]" \
+            "->(t:Individual { iri : '%s' ) RETURN c.iri" % template
+        x = results_2_dict_list(self.ni.nc.commit_list([q]))
+        template = x['c.iri']
+        image_typing_relation = ''
+        depicts = ''
+        in_reg_with = ''
+        ew.add_anon_type_ax(s = anat_iri, 
+                            r = image_typing_relation,
+                            o = anatomical_type)
+        if anatomical_type:
+            ew.add_named_type_ax(s = anat_iri, o = anatomical_type)
+        ew.add_fact(s = channel_iri, r = depicts , o = anat_iri)
+        ew.add_fact(s = channel_iri , r = in_reg_with, o = template ) 
+
+        
 
 
 # Specs for a fb_feature_update
