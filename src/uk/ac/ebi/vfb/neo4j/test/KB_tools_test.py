@@ -114,8 +114,8 @@ class TestIriGenerator(unittest.TestCase):
         self.ig = iri_generator('http://localhost:7474', 'neo4j', 'neo4j')
 
     def test_default_id_gen(self):
-        self.ig.set_default_iri_gen_config()
-        i = self.ni.iri_gen(1)
+        self.ig.set_default_config()
+        i = self.ig.generate(1)
         assert i['short_form'] == 'VFB_00000002'
 
 if __name__ == "__main__":

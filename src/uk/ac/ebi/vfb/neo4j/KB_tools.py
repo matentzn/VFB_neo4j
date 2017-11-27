@@ -417,11 +417,10 @@ class KB_pattern_writer(object):
         anat_iri = self.anat_iri_gen.generate(start)['iri']
         channel_iri = self.channel_iri_gen.generate(start)['iri']        
         attributes['label'] = label
-        a = self.ni.add_node(labels = ['Individual'], 
+        self.ni.add_node(labels = ['Individual'], 
                           IRI = anat_iri,
                           attribute_dict = attributes)
-        channel_iri = self.iri_gen(start)['iri']
-        i = self.ni.add_node(labels = ['Individual'], 
+        self.ni.add_node(labels = ['Individual'], 
                           IRI = channel_iri,
                           attribute_dict= { 'label' : label + '_c' } )
         self.ni.commit()
@@ -437,14 +436,14 @@ class KB_pattern_writer(object):
         depicts = ''
         in_reg_with = ''
         
-        ew.add_anon_type_ax(s = channel_iri, 
+        self.ew.add_anon_type_ax(s = channel_iri, 
                             r = image_typing_relation,
                             o = anatomical_type)
         if anatomical_type:
-            ew.add_named_type_ax(s = anat_iri, o = anatomical_type)
+            self.sew.add_named_type_ax(s = anat_iri, o = anatomical_type)
         # Add facts    
-        ew.add_fact(s = channel_iri, r = depicts , o = anat_iri)
-        ew.add_fact(s = channel_iri , r = in_reg_with, o = template) 
+        self.ew.add_fact(s = channel_iri, r = depicts , o = anat_iri)
+        self.ew.add_fact(s = channel_iri , r = in_reg_with, o = template) 
 
 
 
