@@ -69,7 +69,7 @@ class iri_generator():
             
 
     def set_default_config(self):
-        self.configure_iri_gen(idp = 'VFB', acc_length = 8, base = map_iri('vfb'))
+        self.configure(idp = 'VFB', acc_length = 8, base = map_iri('vfb'))
         
     def generate(self, start):
         ID = gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name)
