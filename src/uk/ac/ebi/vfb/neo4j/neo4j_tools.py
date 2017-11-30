@@ -82,7 +82,7 @@ class neo4j_connect():
                 start_time = time.time()
                 print("Processing chunk of %d of %d starting with: %s" % (i,
                                                                           c_no, 
-                                                                          c[0]))
+                                                                          c[0].encode('utf8')))
             r = self.commit_list(c)
             if verbose:
                 t = time.time() - start_time
