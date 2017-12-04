@@ -5,9 +5,9 @@ Created on Apr 28, 2017
 '''
 
 
-from ..neo4j_tools import neo4j_connect, neo4jContentMover
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect, neo4jContentMover
 import sys
-from ..KB_tools import node_importer
+from uk.ac.ebi.vfb.neo4j.KB_tools import node_importer
 
 """
 A simple script to take all non OWL nodes (not :Class, :Property, or :Individual)
