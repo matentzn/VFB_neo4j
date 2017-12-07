@@ -45,39 +45,7 @@ def gen_id(idp, ID, length, id_name):
         k = gen_key(ID, length)
     return {'short_form' : k, 'acc_int' : ID} # useful to return ID to use for next round.
 
-class iri_generator():
-    
-    def __init__(self, endpoint, usr, pwd):
-        self.nc = neo4j_connect(endpoint, usr, pwd)
-        
-    def configure(self, idp, acc_length, base):
-        self.acc_length = acc_length
-        self.idp = idp
-        self.id_name = {}
-        self.base = base
-        self.statements.append("MATCH (i:Individual) WHERE i.short_form =~ '%s_[0-9]{%d}' " \
-                               "RETURN i.short_form as short_form, i.label as label" % (idp, acc_length)) # Note POSIX regex rqd       
-        r = self.commit()
-        if r:
-            results = results_2_dict_list(r)
-            for res in results:
-                self.id_name[res['short_form']] = res['label']
-            return True
-        else:
-            warnings.warn("No ids match the pattern %s_%s" % (idp, 'n'*acc_length))
-            return False
-            
 
-    def set_default_config(self):
-        self.configure(idp = 'VFB', acc_length = 8, base = map_iri('vfb'))
-        
-    def generate(self, start):
-        ID = gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name)
-        short_form = ID['short_form']
-        iri =  self.base + short_form
-        return { 'iri': iri, 'short_form': short_form}
-    
-    
 
 class kb_writer (object):
       
@@ -136,6 +104,41 @@ class kb_writer (object):
                               % (type(v), k, (str(v))))
         return out
 
+class iri_generator(kb_writer):
+    """
+    A wrapper class for generating IRIs for *OWL individuals* that don't stomp on those already in the KB.
+    """
+    # Making this 
+        
+    def configure(self, idp, acc_length, base):
+        self.acc_length = acc_length
+        self.idp = idp
+        self.id_name = {}
+        self.base = base
+        # Should I really be assuming everything has a short_form?
+        self.statements.append("MATCH (i:Individual) WHERE i.short_form =~ '%s_[0-9]{%d}' " \
+                               "RETURN i.short_form as short_form, i.label as label" % (idp, acc_length)) # Note POSIX regex rqd       
+        r = self.commit()
+        if r:
+            results = results_2_dict_list(r)
+            for res in results:
+                self.id_name[res['short_form']] = res['label']
+            return True
+        else:
+            warnings.warn("No existing ids match the pattern %s_%s" % (idp, 'n'*acc_length))
+            return False
+            
+
+    def set_default_config(self):
+        self.configure(idp = 'VFB', acc_length = 8, base = map_iri('vfb'))
+        
+    def generate(self, start):
+        ID = gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name)
+        short_form = ID['short_form']
+        iri =  self.base + short_form
+        self.id_name[ID] = ''
+        return { 'iri': iri, 'short_form': short_form}
+    
 
 class kb_owl_edge_writer(kb_writer):
     """A class wrapping methods for updating imported entities in the KB.
