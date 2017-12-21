@@ -30,6 +30,7 @@ def make_name_edges(typ, s='', o=''):
     triples = [x['row'] for x in r[0]['data']]
     statements = []
     # Iterate over, making named edges for labels (sub space for _)
+    print("Processing %d triples" % len(triples))
     for t in triples:
         subj = t[0]
         rel = re.sub(' ', '_', t[1]) # In case any labels have spaces
