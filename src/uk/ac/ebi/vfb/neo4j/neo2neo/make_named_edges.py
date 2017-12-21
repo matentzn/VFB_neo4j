@@ -36,8 +36,7 @@ def make_name_edges(typ, s='', o=''):
         rel = re.sub(' ', '_', t[1]) # In case any labels have spaces
         obj = t[2]
         # Merge ensures this doesn't lead to duplicated edges if already present:
-        statements.append("MATCH (n),(m) " \
-                          "WHERE n.short_form = '%s' and m.short_form = '%s' " \
+        statements.append("MATCH (n {short_form:'%s'}),(m {short_form:'%s'}) " \
                           "MERGE (n)-[r:%s { type: '%s' }]->(m)" % (subj, obj, rel, typ)) 
     print("processing %s %s statements" % (len(statements), typ))    
     nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 10000)
