@@ -391,11 +391,24 @@ class KB_pattern_writer(object):
         self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
         self.ni = node_importer(endpoint, usr, pwd)    
         self.anat_iri_gen = iri_generator(endpoint, usr, pwd)
-        self.anat_iri_gen.set_default_iri_gen_config()
+        self.anat_iri_gen.set_default_config()
         self.channel_iri_gen = iri_generator(endpoint, usr, pwd)
-        self.channel_iri_gen.configure_iri_gen(idp = 'VFBc', 
-                                                acc_length = 8, 
-                                                base = map_iri('vfb'))
+        self.channel_iri_gen.configure(idp='VFBc',
+                                       acc_length=8,
+                                       base=map_iri('vfb'))
+
+        #  Adding a dict of common classes and properties
+
+        self.lookup = {
+            'depicts': 'http://xmlns.com/foaf/0.1/depicts',
+            'in register with': 'http://purl.obolibrary.org/obo/RO_0002026',
+            'computer graphic': 'http://purl.obolibrary.org/obo/FBbi_00000224',
+            'channel': 'http://purl.obolibrary.org/obo/fbbt/vfb/VFBext_0000014',
+            'is specified output of': 'http://purl.obolibrary.org/obo/OBI_0000312'
+            }
+
+
+
        
     def add_anatomy_image_set(self, 
                                   image_type, 
@@ -433,20 +446,19 @@ class KB_pattern_writer(object):
         x = results_2_dict_list(self.ni.nc.commit_list([q]))
         template = x['c.iri']
         
-        # Some relation IRIs:
-        
-        image_typing_relation = ''  # oddity of schema.
-        depicts = ''
-        in_reg_with = ''
-        
+
         self.ew.add_anon_type_ax(s = channel_iri, 
-                            r = image_typing_relation,
-                            o = anatomical_type)
+                                 r=self.lookup['is specified output of'],
+                                 o=self.lookup[image_type])
         if anatomical_type:
-            self.sew.add_named_type_ax(s = anat_iri, o = anatomical_type)
+            self.ew.add_named_type_ax(s = anat_iri, o = anatomical_type)
         # Add facts    
-        self.ew.add_fact(s = channel_iri, r = depicts , o = anat_iri)
-        self.ew.add_fact(s = channel_iri , r = in_reg_with, o = template) 
+        self.ew.add_fact(s=channel_iri, r=self.lookup['depicts'], o=anat_iri)
+        self.ew.add_fact(s=channel_iri, r=self.lookup['in register with'], o=template)
+
+    def add_dataSet(self):
+        #Stub
+        return
 
 
 
