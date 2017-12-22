@@ -116,6 +116,7 @@ class TestIriGenerator(unittest.TestCase):
     def test_default_id_gen(self):
         self.ig.set_default_config()
         i = self.ig.generate(1)
+        print(i['short_form'])
         assert i['short_form'] == 'VFB_00000002'
 
 if __name__ == "__main__":
