@@ -4,7 +4,7 @@ Created on Mar 8, 2017
 @author: davidos
 '''
 import unittest
-from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id, iri_generator
+from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id, iri_generator, KB_pattern_writer
 from ...curie_tools import map_iri
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list
 from pathlib import Path
@@ -118,6 +118,34 @@ class TestIriGenerator(unittest.TestCase):
         i = self.ig.generate(1)
         print(i['short_form'])
         assert i['short_form'] == 'VFB_00000001'
+
+class TestKBPatternWriter(unittest.TestCase):
+
+    def setUp(self):
+        self.kpw = KB_pattern_writer(
+            'http://localhost:7474', 'neo4j', 'neo4j')
+        statements = []
+        for k,v in self.kpw.relation_lookup.items():
+            statements.append("CREATE (p:Property { iri : '%s', label: '%s' })" % (v,k))
+
+        for k,v in self.kpw.relation_lookup.items():
+            statements.append("CREATE (p:Class { iri : '%s', label: '%s' }) "% (v,k))
+
+        statements.append("CREATE (p:Class { iri : 'http://fubar/lobulobus', label: 'lobulobus' })")
+
+        statements.append("CREATE (p:Individual:Template { iri : 'http://fubar/template_of_dave', label: 'template_of_dave' })")
+
+        self.kpw.ew.nc.commit_list(statements)
+
+    def testAddAnatomyImageSet(self):
+        t = self.kpw.add_anatomy_image_set(
+            image_type='computer graphic',
+            label= 'lobulobus of Dave',
+            template='http://fubar/template_of_dave',
+            anatomical_type='http://fubar/lobulobus',
+            start = 100
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

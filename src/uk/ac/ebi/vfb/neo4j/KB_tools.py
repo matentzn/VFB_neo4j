@@ -131,6 +131,10 @@ class iri_generator(kb_writer):
 
     def set_default_config(self):
         self.configure(idp = 'VFB', acc_length = 8, base = map_iri('vfb'))
+
+    def set_channel_config(self):
+        self.configure(idp='VFBc', acc_length = 8, base = map_iri('vfb'))
+
         
     def generate(self, start, label = ''):
         ID = gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name)
@@ -399,15 +403,16 @@ class KB_pattern_writer(object):
 
         #  Adding a dict of common classes and properties
 
-        self.lookup = {
+        self.relation_lookup = {
             'depicts': 'http://xmlns.com/foaf/0.1/depicts',
             'in register with': 'http://purl.obolibrary.org/obo/RO_0002026',
-            'computer graphic': 'http://purl.obolibrary.org/obo/FBbi_00000224',
-            'channel': 'http://purl.obolibrary.org/obo/fbbt/vfb/VFBext_0000014',
             'is specified output of': 'http://purl.obolibrary.org/obo/OBI_0000312'
             }
 
-
+        self.class_lookup = {
+            'computer graphic': 'http://purl.obolibrary.org/obo/FBbi_00000224',
+            'channel': 'http://purl.obolibrary.org/obo/fbbt/vfb/VFBext_0000014'
+            }
 
        
     def add_anatomy_image_set(self, 
@@ -424,6 +429,7 @@ class KB_pattern_writer(object):
         specifies the starting range for adding new accessions. 
         Optionally specify additional attributes for the anatomical 
         individual as a dict."""
+        ### TODO: Extend to include site and accession for dbxrefs.
         
         # TBD: Should this really all run on IRIs?
         
@@ -441,20 +447,20 @@ class KB_pattern_writer(object):
                           attribute_dict= { 'label' : label + '_c' } )
         self.ni.commit()
         # Add a query to look up template channel, assuming template anat ind spec
-        q = "MATCH (c:Individual)-[:Related { short_form = 'depicts' }]" \
-            "->(t:Individual { iri : '%s' ) RETURN c.iri" % template
-        x = results_2_dict_list(self.ni.nc.commit_list([q]))
-        template = x['c.iri']
+        #q = "MATCH (c:Individual)-[:Related { short_form : 'depicts' }]" \
+        #    "->(t:Individual { iri : '%s' }) RETURN c.iri" % template
+        #x = results_2_dict_list(self.ni.nc.commit_list([q]))
+        #template = x['c.iri']
         
 
         self.ew.add_anon_type_ax(s = channel_iri, 
-                                 r=self.lookup['is specified output of'],
-                                 o=self.lookup[image_type])
+                                 r=self.relation_lookup['is specified output of'],
+                                 o=self.class_lookup[image_type])
         if anatomical_type:
             self.ew.add_named_type_ax(s = anat_iri, o = anatomical_type)
         # Add facts    
-        self.ew.add_fact(s=channel_iri, r=self.lookup['depicts'], o=anat_iri)
-        self.ew.add_fact(s=channel_iri, r=self.lookup['in register with'], o=template)
+        self.ew.add_fact(s=channel_iri, r=self.relation_lookup['depicts'], o=anat_iri)
+        self.ew.add_fact(s=channel_iri, r=self.relation_lookup['in register with'], o=template)
 
     def add_dataSet(self):
         #Stub
