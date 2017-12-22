@@ -132,11 +132,11 @@ class iri_generator(kb_writer):
     def set_default_config(self):
         self.configure(idp = 'VFB', acc_length = 8, base = map_iri('vfb'))
         
-    def generate(self, start):
+    def generate(self, start, label = ''):
         ID = gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name)
         short_form = ID['short_form']
         iri =  self.base + short_form
-        self.id_name[ID] = ''
+        self.id_name[short_form] = label
         return { 'iri': iri, 'short_form': short_form}
     
 
