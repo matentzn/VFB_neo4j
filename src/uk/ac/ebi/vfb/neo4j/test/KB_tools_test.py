@@ -6,6 +6,7 @@ Created on Mar 8, 2017
 import unittest
 
 import os
+import warnings
 
 from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id, iri_generator, KB_pattern_writer
 from ...curie_tools import map_iri
@@ -78,25 +79,25 @@ class TestEdgeWriter(unittest.TestCase):
                                               "(i2:Class { iri: 'Person' } ) RETURN type(r) AS r"])
         assert r1[0]['data'][0]['row'][0] == 'INSTANCEOF'
         
-    # def tearDown(self):
-    #     # TODO - add some deletions here
-    #     s = ["MATCH (n) DETACH DELETE n"]
-    #     self.edge_writer.nc.commit_list(s)
-    #     pass
+    def tearDown(self):
+         # TODO - add some deletions here
+         s = ["MATCH (n) DETACH DELETE n"]
+         self.edge_writer.nc.commit_list(s)
+         pass
         
 class TestNodeImporter(unittest.TestCase):
 
     def setUp(self):
         self.ni = node_importer('http://localhost:7474', 'neo4j', 'neo4j')
         ### Maybe need node addition test first?!
-        self.ni.add_node(labels = ['Individual'], IRI = map_iri('vfb') + "VFB_00000001", 
-                         attribute_dict =  { 'short_form' : "VFB_00000001" })
+        self.ni.add_node(labels = ['Individual'], IRI = map_iri('vfb') + "VFB_00000001")
         self.ni.commit()
 
     
     def test_update_from_obograph(self):
         # Adding this to cope with odd issues with file_path when running python modules on different systems
         p = get_file_path("uk/ac/ebi/vfb/neo4j/test/resources/vfb_ext.json")
+        print(p)
         self.ni.update_from_obograph(file_path=p)
         self.ni.commit()
         result = self.ni.nc.commit_list(["MATCH (p:Property) WHERE p.iri = 'http://purl.obolibrary.org/obo/RO_0002350' RETURN p.label as label"])
@@ -108,9 +109,9 @@ class TestNodeImporter(unittest.TestCase):
         assert dc[0]['label'] == 'cluster'
 
     
-    # def tearDown(self):
-    #     self.ni.nc.commit_list(statements=["MATCH (n) "
-    #                                        "DETACH DELETE n"])
+    def tearDown(self):
+         self.ni.nc.commit_list(statements=["MATCH (n) "
+                                            "DETACH DELETE n"])
         
 class TestGenId(unittest.TestCase):
     
