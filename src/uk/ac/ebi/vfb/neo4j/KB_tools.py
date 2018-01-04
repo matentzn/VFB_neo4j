@@ -14,9 +14,12 @@ from ..curie_tools import map_iri
 
 
 #  * OWL - Only edges of types Related, INSTANCEOF, SUBCLASSOF are exported to OWL.
-#    * (:Individual)-[:Related { IRI: '', label: ''}]-(:Individual)  -> OWL FACT (OPA)
-#    * (:Individual)-[:Related { IRI: '', label: ''}]-(:Class) -> OWL Type: R some C
-#    * (:Class)-[:Related { IRI: '', label: ''}]-(:Individual) -> OWL SubClassOf: R value I
+#    * (:Individual)-[:Related { iri: '', label: ''}]-(:Individual)  -> OWL FACT (OPA)
+#    * (:Individual)-[:Related { iri: '', label: ''}]-(:Class) -> OWL Type: R some C
+#    * (:Class)-[:Related { iri: '', label: ''}]-(:Individual) -> OWL SubClassOf: R value I
+#    * (:Class|Individual]-[:Annotation { iri: '' ...}-[:Individual]
+
+# But really - all these should be flipped => edges with readable names current type as attributes type = ...
 
 # Match statements checks for all relevant entites, including relations if applicable. Implementing methods should 
 # check return values and warn/fail as appropriate if no match.
@@ -164,23 +167,35 @@ class kb_owl_edge_writer(kb_writer):
                 return True
         else: 
             return False
-            
-    def _add_related_edge(self, s, r, o, stype, otype, edge_annotations = {}, match_on = "iri"):
-        # running edge check for each edge addn - safe by slooow.
+
+    def _add_duple(self):
+        return
+
+    def _add_triple(self, s, r, o, rtype, stype, otype, edge_annotations = {}, match_on = "iri"):
         if match_on not in ['iri', 'label', 'short_form']:
             raise Exception("Illegal match property '%s'. " \
                             "Allowed match properties are 'iri', 'label', 'short_form'" % match_on)
-        out =  "MATCH (s:{stype} {{ {match_on}:'{s}' }} ), (rn:Property {{ {match_on}: '{r}' }}), " \
-          "(o:{otype} {{ {match_on}:'{o}' }} ) ".format(**locals())
-        out += "MERGE (s)-[re:Related { %s: '%s'}]-(o) " % (match_on, r)
-        out += self._set_attributes_from_dict('re', edge_annotations)        
+        out =  "MATCH (s{stype} {{ {match_on}:'{s}' }} ), (rn:Property {{ {match_on}: '{r}' }}), " \
+          "(o{otype} {{ {match_on}:'{o}' }} ) ".format(**locals())
+        out += "MERGE (s)-[re%s { %s: '%s'}]-(o) " % (rtype, match_on, r)
+        out += self._set_attributes_from_dict('re', edge_annotations)
         out += "SET re.label = rn.label SET re.short_form = rn.short_form "
         out += "RETURN '%s', '%s', '%s' " % (s,r,o) # returning input for ref in debugging
-        # If the match fails, no rows are returned, but s,r,o are column headers, 
-        # so can be used for warnings/exceptions
-        
+        # If the match fails, no rows are returned, but s,r,o are column h
         self.statements.append(out)
-    
+
+    def _add_related_edge(self, s, r, o, stype, otype, edge_annotations = {}, match_on = "iri"):
+        # running edge check for each edge addn - safe by slooow.
+        rtype = ':Related'
+        self._add_triple(s, r, o, rtype, stype, otype, edge_annotations, match_on)
+
+    def add_annotation_axiom(self, s, r, o, edge_annotations = {}, match_on = "iri"):
+        """Used to link an OWL entity to an Individual via an annotation axiom."""
+        rtype = ':Annotation'
+        stype = ''
+        otype = '' # This should really be an individual, but some changes to DB are needed first.
+        self._add_triple(s, r, o, rtype, stype, otype, edge_annotations, match_on)
+
     def add_fact(self, s, r, o, edge_annotations = {}, match_on = "iri"):
 
         """Add OWL fact to statement queue.
@@ -189,7 +204,7 @@ class kb_owl_edge_writer(kb_writer):
         o = object individual iri.
         Optionally add edge annotations specified as key value 
         pairs in dict."""
-        self._add_related_edge(s, r, o, stype = "Individual", otype = "Individual", 
+        self._add_related_edge(s, r, o, stype = ":Individual", otype = ":Individual",
                                edge_annotations = edge_annotations, 
                                match_on = match_on)
                 
@@ -200,7 +215,7 @@ class kb_owl_edge_writer(kb_writer):
         o = object Class iri.
         Optionally add edge annotations specified as key value 
         pairs in dict."""
-        self._add_related_edge(s, r, o, stype = "Individual", otype = "Class", 
+        self._add_related_edge(s, r, o, stype = ":Individual", otype = ":Class",
                                edge_annotations = edge_annotations, 
                                match_on = match_on)
     
@@ -213,13 +228,14 @@ class kb_owl_edge_writer(kb_writer):
                 
     def add_anon_subClassOf_ax(self, s,r,o, edge_annotations = {}, match_on = "iri"):
         ### Should probably only support adding individual:individual edges in KB...
-        self._add_related_edge(s, r, o, stype = "Class", otype = "Class", 
+        self._add_related_edge(s, r, o, stype = ":Class", otype = ":Class",
                                edge_annotations = edge_annotations, 
                                match_on = match_on)
 
-    def add_named_subClassOf_ax(self, s,o):
+    def add_named_subClassOf_ax(self, s,o, match_on = "iri"):
         return "MATCH (s:Class { iri: '%s'} ), (o:Class { iri: '%s'} ) " \
-                "MERGE (s)-[:SUBCLASSOF]-(o)" % (s, o)            
+                "MERGE (s)-[:SUBCLASSOF]-(o)" % (s, o)
+
     
     
     def commit(self, verbose=False, chunk_length=5000):
@@ -270,10 +286,12 @@ class node_importer(kb_writer):
     def add_node(self, labels, IRI, attribute_dict = {}):
         """Adds or updates a node.
         Node uniqueness specified by IRI + labels.
+        Derives short_form using has or / as delimiter
         Adds/Updates attributes to those specified in the attribute dict
         """
-        statement = "MERGE (n:%s { iri: '%s' }) " % ((':'.join(labels)), 
-                                                     IRI)
+        short_form = re.split('[#/]', IRI)[-1]
+        statement = "MERGE (n:%s { iri: '%s' }) set n.short_form = '%s'" % ((':'.join(labels)),
+                                                     IRI, short_form)
         statement += self._set_attributes_from_dict(var = 'n', 
                                                     attribute_dict = attribute_dict)
         self.statements.append(statement)
@@ -289,6 +307,7 @@ class node_importer(kb_writer):
         if file_path:   
             f = open(file_path, 'r')
             obographs = json.loads(f.read())
+            f.close()
             primary_graph = obographs['graphs'][0]
         elif url:
             r = requests.get(url)
@@ -406,7 +425,8 @@ class KB_pattern_writer(object):
         self.relation_lookup = {
             'depicts': 'http://xmlns.com/foaf/0.1/depicts',
             'in register with': 'http://purl.obolibrary.org/obo/RO_0002026',
-            'is specified output of': 'http://purl.obolibrary.org/obo/OBI_0000312'
+            'is specified output of': 'http://purl.obolibrary.org/obo/OBI_0000312',
+            'hasDbXref': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref'
             }
 
         self.class_lookup = {
@@ -415,20 +435,22 @@ class KB_pattern_writer(object):
             }
 
        
-    def add_anatomy_image_set(self, 
-                                  image_type, 
-                                  label, 
-                                  start,
-                                  template,
-                                  anatomical_type = '',
-                                  attributes = {}):
+    def add_anatomy_image_set(self,
+                              image_type,
+                              label,
+                              start,
+                              template,
+                              anatomical_type = '',
+                              anatomy_attributes =  {},
+                              dbxrefs = {}):
         """Adds typed inds for an anatomical individual and channel, 
-        linked to each other and to the specified template.  
-        The label argument is used to set the label for the anatomical 
-        individual and to generate a derived label for the channel. Start
-        specifies the starting range for adding new accessions. 
-        Optionally specify additional attributes for the anatomical 
-        individual as a dict."""
+        linked to each other and to the specified template.
+        label: Name of anatomical individual
+        image_type: a relevant FBbi term e.g. 'confocal microscopy', 'electron microscopy'
+        template: channel ID of the template to which the image is registered
+        start: Start of range for generation of new accessions
+        dbxrefs: dict of DB:accession pairs
+        anatomy_attribute = {}"""
         ### TODO: Extend to include site and accession for dbxrefs.
         
         # TBD: Should this really all run on IRIs?
@@ -436,12 +458,24 @@ class KB_pattern_writer(object):
         ### IRI gen is an issue because node_importer assumes a single
         #### ID scheme, but we need different schemes for anatomy and 
         #### channel
-        anat_iri = self.anat_iri_gen.generate(start)['iri']
+        anat_id = self.anat_iri_gen.generate(start)
+        anat_iri = anat_id['iri']
+        anat_short_form = anat_id['short_form']
         channel_iri = self.channel_iri_gen.generate(start)['iri']        
-        attributes['label'] = label
+        anatomy_attributes['label'] = label
         self.ni.add_node(labels = ['Individual'], 
                           IRI = anat_iri,
-                          attribute_dict = attributes)
+                          attribute_dict = anatomy_attributes)
+        self.ni.commit()
+        if dbxrefs:
+            for db, acc in dbxrefs.items():
+                self.ew.add_annotation_axiom(s=anat_short_form,
+                                             r='hasDbXref',
+                                             o=db,
+                                             match_on = 'short_form',
+                                             edge_annotations = { 'accession' : acc }
+                                             ) ## NO generic way to specify a site iri!.  Has to be on short_form!
+
         self.ni.add_node(labels = ['Individual'], 
                           IRI = channel_iri,
                           attribute_dict= { 'label' : label + '_c' } )
@@ -461,6 +495,7 @@ class KB_pattern_writer(object):
         # Add facts    
         self.ew.add_fact(s=channel_iri, r=self.relation_lookup['depicts'], o=anat_iri)
         self.ew.add_fact(s=channel_iri, r=self.relation_lookup['in register with'], o=template)
+        self.ew.commit()
 
     def add_dataSet(self):
         #Stub
