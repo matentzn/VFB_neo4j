@@ -15,6 +15,7 @@ from pathlib import Path
 import re
 
 def get_file_path(qualified_path):
+
     # Workaround for different en0vironments running unit test from different directories (PyCharm is particularly odd.)
 
     pwd = os.getcwd()
@@ -27,7 +28,11 @@ def get_file_path(qualified_path):
     for e in qpl:
         if stat: out.append(e)
         if e == pwdl[-1]: stat = 1
-    return '/'.join(out)
+    # If nothing in out assume we're at the root of the qualified path.
+    if out:
+        return '/'.join(out)
+    else:
+        return qualified_path
 
 
 class TestEdgeWriter(unittest.TestCase):
