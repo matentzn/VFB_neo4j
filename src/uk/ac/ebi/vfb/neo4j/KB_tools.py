@@ -313,7 +313,7 @@ class node_importer(kb_writer):
             r = requests.get(url)
             if r.status_code == 200:
                 obographs = r.json()
-                primary_graph = obographs['graphs'][0] # Add a check for success here!
+                primary_graph = obographs['graphs'][0]   # Add a check for success here!
             else:
                 warnings.warn("URL connection issue %s %s" % (r.status_code, 
                                                               r.reason))
@@ -342,6 +342,7 @@ class node_importer(kb_writer):
             ## Update nodes.
             self.add_node(labels, IRI, attribute_dict)
         self.check_for_obsolete_nodes_in_use()
+        return True
 
     def check_for_obsolete_nodes_in_use(self):
         m = "MATCH (c:Class)-[r]-(fu) WHERE c.is_obsolete=True " \
@@ -463,9 +464,9 @@ class KB_pattern_writer(object):
         anat_short_form = anat_id['short_form']
         channel_iri = self.channel_iri_gen.generate(start)['iri']        
         anatomy_attributes['label'] = label
-        self.ni.add_node(labels = ['Individual'], 
-                          IRI = anat_iri,
-                          attribute_dict = anatomy_attributes)
+        self.ni.add_node(labels=['Individual'],
+                         IRI=anat_iri,
+                         attribute_dict=anatomy_attributes)
         self.ni.commit()
         if dbxrefs:
             for db, acc in dbxrefs.items():
@@ -474,11 +475,11 @@ class KB_pattern_writer(object):
                                              o=db,
                                              match_on = 'short_form',
                                              edge_annotations = { 'accession' : acc }
-                                             ) ## NO generic way to specify a site iri!.  Has to be on short_form!
+                                             )
 
-        self.ni.add_node(labels = ['Individual'], 
-                          IRI = channel_iri,
-                          attribute_dict= { 'label' : label + '_c' } )
+        self.ni.add_node(labels=['Individual'],
+                         IRI=channel_iri,
+                         attribute_dict={'label': label + '_c'})
         self.ni.commit()
         # Add a query to look up template channel, assuming template anat ind spec
         #q = "MATCH (c:Individual)-[:Related { short_form : 'depicts' }]" \
