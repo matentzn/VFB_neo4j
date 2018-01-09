@@ -42,7 +42,7 @@ nc = neo4j_connect(base_uri = args.endpoint,
 
 def make_name_edges(typ, s='', o='', test_mode = False):
     if test_mode:
-        test = " limit 50"
+        test = " limit 10"
     else:
         test = ""
     """ typ = edge label.  o, s = subject and object labels. These hould be pre prepended with ':'"""
