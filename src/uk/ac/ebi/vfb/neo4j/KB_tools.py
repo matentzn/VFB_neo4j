@@ -168,9 +168,6 @@ class kb_owl_edge_writer(kb_writer):
         else: 
             return False
 
-    def _add_duple(self):
-        return
-
     def _add_triple(self, s, r, o, rtype, stype, otype, edge_annotations = {}, match_on = "iri"):
         if match_on not in ['iri', 'label', 'short_form']:
             raise Exception("Illegal match property '%s'. " \
@@ -479,7 +476,8 @@ class KB_pattern_writer(object):
 
         self.ni.add_node(labels=['Individual'],
                          IRI=channel_iri,
-                         attribute_dict={'label': label + '_c'})
+                         attribute_dict={'label': label + '_c'}
+                         )
         self.ni.commit()
         # Add a query to look up template channel, assuming template anat ind spec
         #q = "MATCH (c:Individual)-[:Related { short_form : 'depicts' }]" \
@@ -497,6 +495,7 @@ class KB_pattern_writer(object):
         self.ew.add_fact(s=channel_iri, r=self.relation_lookup['depicts'], o=anat_iri)
         self.ew.add_fact(s=channel_iri, r=self.relation_lookup['in register with'], o=template)
         self.ew.commit()
+        return {'channel': channel_iri, 'anatomy': anat_iri}
 
     def add_dataSet(self):
         #Stub
