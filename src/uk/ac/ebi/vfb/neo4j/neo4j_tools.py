@@ -242,36 +242,38 @@ class neo4jContentMover:
             if edge_key:
                 if edge_key in e['relprops'].keys():
                     edge_restriction = "{ %s : '%s' }" % (edge_key, e['relprops'][edge_key])
-                else :
-                    warnings.warn("Matched edge lacks specified edge_key (%s)"  % (edge_key))
+                else:
+                    # Make this into an exception?
+                    warnings.warn("Matched edge lacks specified edge_key (%s)" % (edge_key))
+                    continue
             else:
                 edge_restriction = ""
             ### Move edge only when subject and object nodes match on keys and labels.
-            s.append("MATCH (s%s { %s : '%s'}), " \
-                     " (o%s { %s : '%s'}) " \
-                     "MERGE (s)-[r:%s %s]->(o) " \
+            s.append("MATCH (s%s { %s : '%s'}), "
+                     " (o%s { %s : '%s'}) "
+                     "MERGE (s)-[r:%s %s]->(o) "
                      "SET r = %s" % (slab_string, node_key, e['subject'], 
                                      olab_string, node_key, e['object'], 
                                      rel, edge_restriction,
                                      attribute_map))
-        self.To.commit_list_in_chunks(statements = s,
-                                       verbose = verbose,
-                                       chunk_length = chunk_length)
+        self.To.commit_list_in_chunks(statements=s,
+                                      verbose=verbose,
+                                      chunk_length=chunk_length)
 
-    def move_node_labels(self, match, node_key, chunk_length = 2000, verbose = True):
+    def move_node_labels(self, match, node_key, chunk_length=2000, verbose=True):
         """match = any match statement in which a node to move is specified with variable n.
 
         Look up labels for all nodes found by specified match query of 'to'
         Add these labels to all nodes found via the same match query of 'from'"""
 
-        ret  = " return labels(n) as labs, n.%s" % node_key
+        ret= " return labels(n) as labs, n.%s" % node_key
         results = self.From.commit_list([match + ret])
         dc = results_2_dict_list(results)
         statements = []
         for d in dc:
-            lab_string = ':'+':'.join(labs)
+            lab_string = ':'+':'.join(d['labs'])
             statements.append(match +
-                              "SET n%s  " % (dc['labs']))
+                              "SET n%s  " % lab_string)
 
         self.To.commit_list_in_chunks(statements, chunk_length, verbose)
 

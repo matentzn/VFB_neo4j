@@ -52,9 +52,15 @@ ncm = neo4jContentMover(kb,prod)
 channel_match = "MATCH (:Class { label: 'channel'})-[:INSTANCEOF]-(n:Individual) "
 ncm.move_nodes(match=channel_match, key='iri', test_mode=False)
 
+
 # Move all edges one step from a channel
 edge_match = "MATCH (:Class { label: 'channel'})-[:INSTANCEOF]-(s:Individual) " \
              "WITH s MATCH (s)-[r]-(o) "
+#ncm.move_node_labels(match="MATCH (:Class { label: 'channel'})-[:INSTANCEOF]-(n:Individual)")
+#channel nodes are moved and so will already have appropriate labels.
+# Nodes connected to channel by some edge may already be in Prod (from OWL load) and so may lack some labels
+# required for edge match to work.  We add then here:
+ncm.move_node_labels(match="MATCH (:Class { label: 'channel'})-[:INSTANCEOF]-(s:Individual) WITH s MATCH (s)-[r]-(n)")
 ncm.move_edges(match=edge_match, node_key='iri', test_mode=False)
 
 ## move non-OWL content
@@ -64,10 +70,10 @@ non_owl_node_match = "MATCH (n) " \
         "AND not('Individual' IN labels(n)) " \
         "AND not('Property' IN labels(n))"     
            
-ncm.move_nodes(match = non_owl_node_match, key='iri', test_mode=False)
+ncm.move_nodes(match=non_owl_node_match, key='iri', test_mode=False)
  
 non_owl_edge_match = "MATCH (s)-[r]->(o) " \
              "WHERE not(type(r) IN ['INSTANCEOF', 'Related', 'SUBCLASSOF']) " 
-ncm.move_edges(match = non_owl_edge_match, node_key = 'iri', test_mode=False)
+ncm.move_edges(match=non_owl_edge_match, node_key='iri', test_mode=False)
 
 
