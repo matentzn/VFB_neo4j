@@ -41,7 +41,7 @@ prod = neo4j_connect(sys.argv[4], sys.argv[5], sys.argv[6])
 
 ni = node_importer(sys.argv[4], sys.argv[5], sys.argv[6])
 
-ni.add_default_constraint_set(['DataSet', 'Site', 'License' ])
+ni.add_default_constraint_set(['DataSet', 'Site', 'License', 'Individual', 'Class'])
 
 ncm = neo4jContentMover(kb,prod)
 
@@ -49,19 +49,26 @@ ncm = neo4jContentMover(kb,prod)
 
 ## Move all instance of channel:
 
-channel_match = "MATCH (:Class { label: 'channel'})-[:INSTANCEOF]-(n:Individual) "
+channel_match = "MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(n:Individual) "
 ncm.move_nodes(match=channel_match, key='iri', test_mode=False)
 
 
 # Move all edges one step from a channel
-edge_match = "MATCH (:Class { label: 'channel'})-[:INSTANCEOF]-(s:Individual) " \
-             "WITH s MATCH (s)-[r]-(o) "
-#ncm.move_node_labels(match="MATCH (:Class { label: 'channel'})-[:INSTANCEOF]-(n:Individual)")
-#channel nodes are moved and so will already have appropriate labels.
+# ncm.move_node_labels(match="MATCH (:Class { label: 'channel'})-[:INSTANCEOF]-(n:Individual)")
+# channel nodes are moved and so will already have appropriate labels.
 # Nodes connected to channel by some edge may already be in Prod (from OWL load) and so may lack some labels
 # required for edge match to work.  We add then here:
-ncm.move_node_labels(match="MATCH (:Class { label: 'channel'})-[:INSTANCEOF]-(s:Individual) WITH s MATCH (s)-[r]-(n)")
-ncm.move_edges(match=edge_match, node_key='iri', test_mode=False)
+ncm.move_node_labels(match="MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(s:Individual) WITH s MATCH (s)-[r]-(n)")
+
+# Then add edges in each direction independently (could be bundled with edge mover but going with simple solution here)
+ncm.move_edges(match="MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(s:Individual) "
+                     "WITH s MATCH (s)-[r]->(o) ",
+               node_key='iri',
+               test_mode=False)
+ncm.move_edges(match="MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(o:Individual) "
+                     "WITH s MATCH (s)-[r]->(o) ",
+               node_key='iri',
+               test_mode=False)
 
 ## move non-OWL content
 ## Requires: IRIs for everything to be moved (as iri)
