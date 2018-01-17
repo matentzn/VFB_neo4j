@@ -175,7 +175,7 @@ def dict_2_mapString(d):
     return "{ " + ' , '.join(map_pairs) + " }"
 
 class neo4jContentMover:
-    """A wrapper for methods that move content between two neo4J databases.
+    """A wrapper for methods that safely move content between two neo4J databases.
     Limitation:  The database being pulled from must be Neo4j 3.n + (2.n lacks
     the properties function used here)."""
     
@@ -190,7 +190,10 @@ class neo4jContentMover:
         key = attribute used in merge statements to non-redundantly add content. must be present
         in matched nodes.
         Optionally set commit chunk length, verbosity, test mode (limit 100)
+
+        WARNING: THIS DEPENDS ON MATCH BETWEEN SETS OF LABELS. => potential danger of duplicate content.
         """
+        # TODO: modify this so that MERGE does not specify label.  Then adds labels string afterwards.
         
         ret = " RETURN n.%s AS key, labels(n) AS labels , " \
                 "properties(n) as properties" % key
@@ -208,19 +211,22 @@ class neo4jContentMover:
                                                                   key, n['properties'][key], 
                                                                   attribute_map)) 
         self.To.commit_list_in_chunks(statements = s,
-                                       verbose = verbose, 
-                                       chunk_length = chunk_length)
+                                      verbose = verbose,
+                                      chunk_length = chunk_length)
                     
-    def move_edges(self, match, node_key, edge_key = '', chunk_length = 2000, 
-                   verbose = True, test_mode = False):
+    def move_edges(self, match, node_key, edge_key='', chunk_length=2000,
+                   verbose=True, test_mode=False):
         """
+        Identifies edges in 'from' based on match statement;
+        Merges identified edges in to 'to' using combination of specified key match and
+        neo4j labels of matched nodes.
         match = any match statement in which an edge (triple) is specified with variables s,r,o
         node_key = key used to match/merge to add new content
         f = neo4j_connect object for KB that content is being moved from
         t = neo4j_connect object for KB that content is being move to.
         Optionally set commit chunk length
         """
-        
+
         ret = "RETURN s.%s AS subject, labels(s) as slab, type(r) AS reltype, " \
                 "properties(r) AS relprops, o.%s AS object, labels(o) AS olab " % (node_key, node_key)
         if test_mode:
@@ -236,20 +242,45 @@ class neo4jContentMover:
             if edge_key:
                 if edge_key in e['relprops'].keys():
                     edge_restriction = "{ %s : '%s' }" % (edge_key, e['relprops'][edge_key])
-                else :
-                    warnings.warn("Matched edge lacks specified edge_key (%s)"  % (edge_key))
+                else:
+                    # Make this into an exception?
+                    warnings.warn("Matched edge lacks specified edge_key (%s)" % (edge_key))
+                    continue
             else:
                 edge_restriction = ""
-            s.append("MERGE (s%s { %s : '%s'}) " \
-                     "MERGE (o%s { %s : '%s'}) " \
-                     "MERGE (s)-[r:%s %s]->(o) " \
-                     "SET r = %s" % (slab_string, node_key, e['subject'], 
-                                     olab_string, node_key, e['object'], 
-                                     rel, edge_restriction,
-                                     attribute_map))
-        self.To.commit_list_in_chunks(statements = s,
-                                       verbose = verbose, 
-                                       chunk_length = chunk_length)  
+            ### Move edge only when subject and object nodes match on keys and labels.
+            emerge = "MATCH (s%s { %s : '%s'}), " \
+                     " (o%s { %s : '%s'}) " \
+                     "MERGE (s)-[r:%s %s]->(o) " % \
+                                    (slab_string, node_key, e['subject'],
+                                     olab_string, node_key, e['object'],
+                                     rel, edge_restriction
+                                     )
+            if e['relprops']:
+                emerge = emerge + "SET r = %s" % attribute_map
+            s.append(emerge)
+        self.To.commit_list_in_chunks(statements=s,
+                                      verbose=verbose,
+                                      chunk_length=chunk_length)
+
+    def move_node_labels(self, match, node_key, chunk_length=2000, verbose=True):
+        """match = any match statement in which a node to move is specified with variable n.
+
+        Look up labels for all nodes found by specified match query of 'to'
+        Add these labels to all nodes found via the same match query of 'from'"""
+
+        ret= " return labels(n) as labs, n.%s" % node_key
+        results = self.From.commit_list([match + ret])
+        dc = results_2_dict_list(results)
+        statements = []
+        for d in dc:
+            lab_string = ':'+':'.join(d['labs'])
+            statements.append(match +
+                              "SET n%s  " % lab_string)
+
+        self.To.commit_list_in_chunks(statements, chunk_length, verbose)
+
+
                       
                        
     

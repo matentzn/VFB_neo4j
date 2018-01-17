@@ -15,20 +15,24 @@ from pathlib import Path
 import re
 
 def get_file_path(qualified_path):
+    """Takes the fully qualified path of a file as the input.  Checks the current working directory.
+    If that directory is within the fully qualified path, returns the local path from working directory
+    to file.  If no, returns fully qualified path."""
 
-    # Workaround for different en0vironments running unit test from different directories (PyCharm is particularly odd.)
+    # Hacky little workaround for different environments running unit test from different, unpredicatble, directories
+    # (PyCharm behavior is particularly odd.)
 
     pwd = os.getcwd()
     pwdl = pwd.split('/')
     qpl = qualified_path.split('/')
     stat = False
     out = []
-    # Scan through qpl unti hit lsat entry in pwdl.  Start list from proceeding term.
+    # Scan through qpl until hit lsat entry in pwdl.  Start list from proceeding term.
 
     for e in qpl:
         if stat: out.append(e)
         if e == pwdl[-1]: stat = 1
-    # If nothing in out assume we're at the root of the qualified path.
+    # If nothing in 'out' assume we're at the root of the qualified path.
     if out:
         return '/'.join(out)
     else:
