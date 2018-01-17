@@ -48,9 +48,9 @@ class TestContentMover(unittest.TestCase):
 
     def testMoveNodeLabels(self):
         self.ncm.To.commit_list(["CREATE (n { short_form : 'VFB_00000002' })"])
-        self.ncm.move_node_labels(match="MATCH (n { short_form : 'VFB_00000001' })",
+        self.ncm.move_node_labels(match="MATCH (n { short_form : 'VFB_00000002' })",
                                   node_key='iri')
-        query = self.ncm.To.commit_list(["MATCH (n { short_form : 'VFB_00000001' })"
+        query = self.ncm.To.commit_list(["MATCH (n { short_form : 'VFB_00000002' })"
                                          "RETURN labels(n) as nlab"])
         query_results = results_2_dict_list(query)
 

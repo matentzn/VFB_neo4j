@@ -41,7 +41,7 @@ prod = neo4j_connect(sys.argv[4], sys.argv[5], sys.argv[6])
 
 ni = node_importer(sys.argv[4], sys.argv[5], sys.argv[6])
 
-ni.add_default_constraint_set(['DataSet', 'Site', 'License', 'Individual', 'Class'])
+ni.add_default_constraint_set(['DataSet', 'Site', 'License', 'Individual'])
 
 ncm = neo4jContentMover(kb,prod)
 
