@@ -211,8 +211,8 @@ class neo4jContentMover:
                                                                   key, n['properties'][key], 
                                                                   attribute_map)) 
         self.To.commit_list_in_chunks(statements = s,
-                                       verbose = verbose, 
-                                       chunk_length = chunk_length)
+                                      verbose = verbose,
+                                      chunk_length = chunk_length)
                     
     def move_edges(self, match, node_key, edge_key='', chunk_length=2000,
                    verbose=True, test_mode=False):
@@ -249,13 +249,16 @@ class neo4jContentMover:
             else:
                 edge_restriction = ""
             ### Move edge only when subject and object nodes match on keys and labels.
-            s.append("MATCH (s%s { %s : '%s'}), "
-                     " (o%s { %s : '%s'}) "
-                     "MERGE (s)-[r:%s %s]->(o) "
-                     "SET r = %s" % (slab_string, node_key, e['subject'], 
-                                     olab_string, node_key, e['object'], 
-                                     rel, edge_restriction,
-                                     attribute_map))
+            emerge = "MATCH (s%s { %s : '%s'}), " \
+                     " (o%s { %s : '%s'}) " \
+                     "MERGE (s)-[r:%s %s]->(o) " % \
+                                    (slab_string, node_key, e['subject'],
+                                     olab_string, node_key, e['object'],
+                                     rel, edge_restriction
+                                     )
+            if e['relprops']:
+                emerge = emerge + "SET r = %s" % attribute_map
+            s.append(emerge)
         self.To.commit_list_in_chunks(statements=s,
                                       verbose=verbose,
                                       chunk_length=chunk_length)
