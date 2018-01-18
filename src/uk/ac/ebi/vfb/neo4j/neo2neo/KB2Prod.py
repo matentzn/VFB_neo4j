@@ -58,7 +58,8 @@ ncm.move_nodes(match=channel_match, key='iri', test_mode=False)
 # channel nodes are moved and so will already have appropriate labels.
 # Nodes connected to channel by some edge may already be in Prod (from OWL load) and so may lack some labels
 # required for edge match to work.  We add then here:
-ncm.move_node_labels(match="MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(s:Individual) WITH s MATCH (s)-[r]-(n)")
+ncm.move_node_labels(match="MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(s:Individual) WITH s MATCH (s)-[r]-(n)",
+                     node_key='iri')
 
 # Then add edges in each direction independently (could be bundled with edge mover but going with simple solution here)
 ncm.move_edges(match="MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(s:Individual) "
