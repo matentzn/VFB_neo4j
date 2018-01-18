@@ -222,9 +222,7 @@ class neo4jContentMover:
         neo4j labels of matched nodes.
         match = any match statement in which an edge (triple) is specified with variables s,r,o
         node_key = key used to match/merge to add new content
-        f = neo4j_connect object for KB that content is being moved from
-        t = neo4j_connect object for KB that content is being move to.
-        Optionally set commit chunk length
+        Optionally set commit chunk length.
         """
 
         ret = "RETURN s.%s AS subject, labels(s) as slab, type(r) AS reltype, " \
