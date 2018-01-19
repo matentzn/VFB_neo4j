@@ -276,9 +276,9 @@ class neo4jContentMover:
             statements.append(match +
                               "SET n%s  " % lab_string)
 
-        self.To.commit_list_in_chunks(statements, chunk_length, verbose)
-
-
+        self.To.commit_list_in_chunks(statements=s,
+                                      verbose=verbose,
+                                      chunk_length=chunk_length)
                       
                        
     
