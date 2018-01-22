@@ -429,12 +429,14 @@ class KB_pattern_writer(object):
 
         self.class_lookup = {
             'computer graphic': 'http://purl.obolibrary.org/obo/FBbi_00000224',
-            'channel': 'http://purl.obolibrary.org/obo/fbbt/vfb/VFBext_0000014'
+            'channel': 'http://purl.obolibrary.org/obo/fbbt/vfb/VFBext_0000014',
+            'confocal microscopy' : 'http://purl.obolibrary.org/obo/FBbi_00000251',
+            'SB-SEM' : 'http://purl.obolibrary.org/obo/FBbi_00000585'
             }
 
        
     def add_anatomy_image_set(self,
-                              image_type,
+                              imaging_type,
                               label,
                               start,
                               template,
