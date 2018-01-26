@@ -446,7 +446,7 @@ class KB_pattern_writer(object):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
         label: Name of anatomical individual
-        image_type: a relevant FBbi term e.g. 'confocal microscopy', 'electron microscopy'
+        imaging_type: a relevant FBbi term e.g. 'confocal microscopy', 'electron microscopy'
         template: channel ID of the template to which the image is registered
         start: Start of range for generation of new accessions
         dbxrefs: dict of DB:accession pairs
@@ -490,7 +490,7 @@ class KB_pattern_writer(object):
 
         self.ew.add_anon_type_ax(s = channel_iri, 
                                  r=self.relation_lookup['is specified output of'],
-                                 o=self.class_lookup[image_type])
+                                 o=self.class_lookup[imaging_type])
         if anatomical_type:
             self.ew.add_named_type_ax(s = anat_iri, o = anatomical_type)
         # Add facts    
