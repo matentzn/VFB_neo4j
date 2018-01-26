@@ -108,6 +108,7 @@ class neo4j_connect():
         """
         if not (response.status_code == 200):
             warnings.warn("Connection error: %s (%s)" % (response.status_code, response.reason))
+            return False
         else:
             j = response.json()
             if j['errors']:
@@ -215,7 +216,7 @@ class neo4jContentMover:
                                       chunk_length = chunk_length)
                     
     def move_edges(self, match, node_key, edge_key='', chunk_length=2000,
-                   verbose=True, test_mode=False):
+                   verbose=True, test_mode=False, fail_mode = 'soft'):
         """
         Identifies edges in 'from' based on match statement;
         Merges identified edges in to 'to' using combination of specified key match and
@@ -229,37 +230,43 @@ class neo4jContentMover:
                 "properties(r) AS relprops, o.%s AS object, labels(o) AS olab " % (node_key, node_key)
         if test_mode:
             ret += " limit 100"
-        results = self.From.commit_list([match + ret])                                            
-        edges = results_2_dict_list(results)
-        s = []
-        for e in edges:
-            attribute_map = dict_2_mapString(e['relprops'])
-            rel = e['reltype']
-            slab_string = ':'+':'.join(e['slab'])
-            olab_string = ':'+':'.join(e['olab'])
-            if edge_key:
-                if edge_key in e['relprops'].keys():
-                    edge_restriction = "{ %s : '%s' }" % (edge_key, e['relprops'][edge_key])
+        results = self.From.commit_list([match + ret])
+        if not results:
+            if fail_mode == 'hard':
+                raise Exception("fubar")
+            elif fail_mode == 'soft':
+                warnings.warn("Commit to KB return false. Likely connection or cypher error.")
+        else:
+            edges = results_2_dict_list(results)
+            s = []
+            for e in edges:
+                attribute_map = dict_2_mapString(e['relprops'])
+                rel = e['reltype']
+                slab_string = ':'+':'.join(e['slab'])
+                olab_string = ':'+':'.join(e['olab'])
+                if edge_key:
+                    if edge_key in e['relprops'].keys():
+                        edge_restriction = "{ %s : '%s' }" % (edge_key, e['relprops'][edge_key])
+                    else:
+                        # Make this into an exception?
+                        warnings.warn("Matched edge lacks specified edge_key (%s)" % (edge_key))
+                        continue
                 else:
-                    # Make this into an exception?
-                    warnings.warn("Matched edge lacks specified edge_key (%s)" % (edge_key))
-                    continue
-            else:
-                edge_restriction = ""
-            ### Move edge only when subject and object nodes match on keys and labels.
-            emerge = "MATCH (s%s { %s : '%s'}), " \
-                     " (o%s { %s : '%s'}) " \
-                     "MERGE (s)-[r:%s %s]->(o) " % \
-                                    (slab_string, node_key, e['subject'],
-                                     olab_string, node_key, e['object'],
-                                     rel, edge_restriction
-                                     )
-            if e['relprops']:
-                emerge = emerge + "SET r = %s" % attribute_map
-            s.append(emerge)
-        self.To.commit_list_in_chunks(statements=s,
-                                      verbose=verbose,
-                                      chunk_length=chunk_length)
+                    edge_restriction = ""
+                ### Move edge only when subject and object nodes match on keys and labels.
+                emerge = "MATCH (s%s { %s : '%s'}), " \
+                         " (o%s { %s : '%s'}) " \
+                         "MERGE (s)-[r:%s %s]->(o) " % \
+                                        (slab_string, node_key, e['subject'],
+                                         olab_string, node_key, e['object'],
+                                         rel, edge_restriction
+                                         )
+                if e['relprops']:
+                    emerge = emerge + "SET r = %s" % attribute_map
+                s.append(emerge)
+            self.To.commit_list_in_chunks(statements=s,
+                                          verbose=verbose,
+                                          chunk_length=chunk_length)
 
     def move_node_labels(self, match, node_key, chunk_length=2000, verbose=True):
         """match = any match statement in which a node to move is specified with variable n.
