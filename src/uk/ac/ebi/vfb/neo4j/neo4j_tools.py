@@ -6,6 +6,7 @@ import warnings
 import re
 import time
 from datetime import datetime, timedelta
+import math
 #import token
 
 
@@ -76,7 +77,7 @@ class neo4j_connect():
         chunked_statements = chunks(l = statements, n=chunk_length)
         chunk_results = []
         i = 1
-        c_no = len(statements)/chunk_length
+        c_no = math.ceil(len(statements)/chunk_length)
         for c in chunked_statements:
             if verbose:
                 start_time = time.time()
@@ -86,14 +87,8 @@ class neo4j_connect():
             r = self.commit_list(c)
             if verbose:
                 t = time.time() - start_time
-                print("Processing took %d seconds for %s statements" % (t,len(c)))
-                print("Estimated time to completion: %s." % str(timedelta(
-                                                                                   seconds = (
-                                                                                              t*(c_no - i)
-                                                                                              )
-                                                                                   )
-                                                                )
-                      )
+                print("Processing took %d seconds for %s statements" % (t, len(c)))
+                print("Estimated time to completion: %s." % str(timedelta(seconds=(t*(c_no - i)))))
             if type(r) == list:
                 chunk_results.extend(r)
             else:
