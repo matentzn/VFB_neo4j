@@ -175,7 +175,7 @@ class TestKBPatternWriter(unittest.TestCase):
 
     def testAddAnatomyImageSet(self):
         t = self.kpw.add_anatomy_image_set(
-            image_type='computer graphic',
+            imaging_type='computer graphic',
             label='lobulobus of Dave',
             template='http://fubar/template_of_dave',
             anatomical_type='http://fubar/lobulobus',
