@@ -77,7 +77,7 @@ def roll_cypher_add_syn_pub_link(sfid, s, pub_id_typ, pub_id):
 
 
 nc.commit_list(["MERGE (:pub:Individual { FlyBase: 'Unattributed' })"])
-q = nc.commit_list(["MATCH (c:Class|Individual) return short_form, c.obo_synonym as syns, c.obo_definition_citation as def"])
+q = nc.commit_list(["MATCH (c) where c:Class or c:Individual return c.short_form, c.obo_synonym as syns, c.obo_definition_citation as def"])
 dc = results_2_dict_list(q)
 statements = []
 for d in dc:
