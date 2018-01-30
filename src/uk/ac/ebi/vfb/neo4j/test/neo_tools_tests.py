@@ -49,7 +49,7 @@ class TestContentMover(unittest.TestCase):
     def testMoveNodeLabels(self):
         self.ncm.To.commit_list(["CREATE (n { short_form : 'VFB_00000002' })"])
         self.ncm.move_node_labels(match="MATCH (n { short_form : 'VFB_00000002' })",
-                                  node_key='iri')
+                                  node_key='short_form')
         query = self.ncm.To.commit_list(["MATCH (n { short_form : 'VFB_00000002' })"
                                          "RETURN labels(n) as nlab"])
         query_results = results_2_dict_list(query)
@@ -57,7 +57,8 @@ class TestContentMover(unittest.TestCase):
         assert 'Individual' in query_results[0]['nlab']
 
     def tearDown(self):
-        self.ncm.To.commit_list(["MATCH (x)-[r]-(y) DETACH DELETE x,y,r"])
+        #self.ncm.To.commit_list(["MATCH (x)-[r]-(y) DELETE r", "MATCH (n) delete (n)"])
+        return
 
 
 
