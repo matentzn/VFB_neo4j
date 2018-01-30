@@ -269,18 +269,33 @@ class neo4jContentMover:
         Look up labels for all nodes found by specified match query of 'to'
         Add these labels to all nodes found via the same match query of 'from'"""
 
-        ret= " return labels(n) as labs, n.%s" % node_key
-        results = self.From.commit_list([match + ret])
-        dc = results_2_dict_list(results)
-        statements = []
-        for d in dc:
-            lab_string = ':'+':'.join(d['labs'])
-            statements.append(match +
-                              "SET n%s  " % lab_string)
+        ret = " return labels(n) as labs, n.%s" % node_key
+        From_results = self.From.commit_list([match + ret])
+        To_results = self.From.commit_list([match + ret])
 
-        self.To.commit_list_in_chunks(statements=statements,
+        def roll_label_lookup(results):
+            dc = results_2_dict_list(results)
+            out = {}
+            for d in dc:
+                out[d['n.%s' % node_key]] = set(d['labs'])
+            return out
+
+        From_label_lookup = roll_label_lookup(From_results)
+        TO_label_lookup = roll_label_lookup(To_results)
+
+        statements = set()
+
+        for k,v in From_label_lookup.items():
+            if not (TO_label_lookup[k] == v):
+                lab_string = ':'+':'.join(v)
+                statements.add("MATCH (n) WHERE n.iri = %s"
+                               " SET n%s  " % (k, lab_string))
+
+        self.To.commit_list_in_chunks(statements=list(statements),
                                       verbose=verbose,
                                       chunk_length=chunk_length)
+
+
                       
                        
     
