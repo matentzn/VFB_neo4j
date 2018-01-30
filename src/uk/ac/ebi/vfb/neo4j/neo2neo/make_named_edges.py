@@ -72,7 +72,7 @@ def make_name_edges(typ, delete_old=False, test_mode = False):
         delete = " DELETE r"
     else:
         delete = ""
-    statements = ["MATCH (n)-[r:%s]->(m) WITH n, r MERGE (n)-[r2:replace(r.label,' ','_') {label:type(r),iri:r.iri}]->(m) %s%s" % (typ, delete, test)]    
+    statements = ["MATCH (n)-[r:%s]->(m) MERGE (n)-[r2:replace(r.label,' ','_') {label:type(r),iri:r.iri}]->(m) %s%s" % (typ, delete, test)]    
     nc.commit_list(statements)
     
 make_name_edges(typ='Related', test_mode = args.test)
