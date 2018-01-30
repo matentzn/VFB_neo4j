@@ -76,7 +76,7 @@ def make_name_edges(typ, delete_old=False, test_mode = False):
     r = nc.commit_list(statements)  
     statements = []
     # Iterate over, making named edges for labels (sub space for _)
-    labels = r[0]['labels']
+    labels = r[0]['data']['row'][0]
     for label in labels:
         rel = re.sub(' ', '_', label) # In case any labels have spaces
         statements.append("MATCH (n)-[r:%s {label:'%s'}]->(m) MERGE (n)-[r2:%s {label:type(r),iri:r.iri}]->(m) %s%s" % (typ, label, rel, delete, test))    
