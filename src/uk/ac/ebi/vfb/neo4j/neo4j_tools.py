@@ -291,8 +291,9 @@ class neo4jContentMover:
                 diff = from_labels - TO_label_lookup[k] # find labels that are on this node in From, not to
                 if diff:
                     lab_string = ':'+':'.join(diff)
-                    statements.add("MATCH (n) WHERE n.%s = %s"
+                    statements.add("MATCH (n) WHERE n.%s = '%s'"
                                    " SET n%s  " % (node_key, k, lab_string))
+
 
         self.To.commit_list_in_chunks(statements=list(statements),
                                       verbose=verbose,
