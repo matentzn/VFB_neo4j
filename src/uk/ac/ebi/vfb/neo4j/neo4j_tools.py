@@ -6,6 +6,7 @@ import warnings
 import re
 import time
 from datetime import datetime, timedelta
+import math
 #import token
 
 
@@ -76,7 +77,7 @@ class neo4j_connect():
         chunked_statements = chunks(l = statements, n=chunk_length)
         chunk_results = []
         i = 1
-        c_no = len(statements)/chunk_length
+        c_no = math.ceil(len(statements)/chunk_length)
         for c in chunked_statements:
             if verbose:
                 start_time = time.time()
@@ -86,14 +87,8 @@ class neo4j_connect():
             r = self.commit_list(c)
             if verbose:
                 t = time.time() - start_time
-                print("Processing took %d seconds for %s statements" % (t,len(c)))
-                print("Estimated time to completion: %s." % str(timedelta(
-                                                                                   seconds = (
-                                                                                              t*(c_no - i)
-                                                                                              )
-                                                                                   )
-                                                                )
-                      )
+                print("Processing took %d seconds for %s statements" % (t, len(c)))
+                print("Estimated time to completion: %s." % str(timedelta(seconds=(t*(c_no - i)))))
             if type(r) == list:
                 chunk_results.extend(r)
             else:
@@ -271,21 +266,40 @@ class neo4jContentMover:
     def move_node_labels(self, match, node_key, chunk_length=2000, verbose=True):
         """match = any match statement in which a node to move is specified with variable n.
 
-        Look up labels for all nodes found by specified match query of 'to'
-        Add these labels to all nodes found via the same match query of 'from'"""
+        Look up labels for all nodes found by specified match to both from and to.
+        For any case where a matched node (defined by node_key) has labels in to but not from,
+        move those labels."""
 
-        ret= " return labels(n) as labs, n.%s" % node_key
-        results = self.From.commit_list([match + ret])
-        dc = results_2_dict_list(results)
-        statements = []
-        for d in dc:
-            lab_string = ':'+':'.join(d['labs'])
-            statements.append(match +
-                              "SET n%s  " % lab_string)
+        ret = " return labels(n) as labs, n.%s" % node_key
+        From_results = self.From.commit_list([match + ret])
+        To_results = self.To.commit_list([match + ret])
 
-        self.To.commit_list_in_chunks(statements=statements,
+        def roll_label_lookup(results):
+            dc = results_2_dict_list(results)
+            out = {}
+            for d in dc:
+                out[d['n.%s' % node_key]] = set(d['labs'])
+            return out
+
+        From_label_lookup = roll_label_lookup(From_results)
+        TO_label_lookup = roll_label_lookup(To_results)
+
+        statements = set()
+
+        for k, from_labels in From_label_lookup.items():
+            if k in TO_label_lookup.keys():
+                diff = from_labels - TO_label_lookup[k] # find labels that are on this node in From, not to
+                if diff:
+                    lab_string = ':'+':'.join(diff)
+                    statements.add("MATCH (n) WHERE n.%s = '%s'"
+                                   " SET n%s  " % (node_key, k, lab_string))
+
+
+        self.To.commit_list_in_chunks(statements=list(statements),
                                       verbose=verbose,
                                       chunk_length=chunk_length)
+
+
                       
                        
     
