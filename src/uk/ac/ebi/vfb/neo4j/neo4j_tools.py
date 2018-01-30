@@ -266,12 +266,13 @@ class neo4jContentMover:
     def move_node_labels(self, match, node_key, chunk_length=2000, verbose=True):
         """match = any match statement in which a node to move is specified with variable n.
 
-        Look up labels for all nodes found by specified match query of 'to'
-        Add these labels to all nodes found via the same match query of 'from'"""
+        Look up labels for all nodes found by specified match to both from and to.
+        For any case where a matched node (defined by node_key) has labels in to but not from,
+        move those labels."""
 
         ret = " return labels(n) as labs, n.%s" % node_key
         From_results = self.From.commit_list([match + ret])
-        To_results = self.From.commit_list([match + ret])
+        To_results = self.To.commit_list([match + ret])
 
         def roll_label_lookup(results):
             dc = results_2_dict_list(results)
@@ -285,11 +286,13 @@ class neo4jContentMover:
 
         statements = set()
 
-        for k,v in From_label_lookup.items():
-            if not (TO_label_lookup[k] == v):
-                lab_string = ':'+':'.join(v)
-                statements.add("MATCH (n) WHERE n.iri = %s"
-                               " SET n%s  " % (k, lab_string))
+        for k, from_labels in From_label_lookup.items():
+            if k in TO_label_lookup.keys():
+                diff = from_labels - TO_label_lookup[k] # find labels that are on this node in From, not to
+                if diff:
+                    lab_string = ':'+':'.join(diff)
+                    statements.add("MATCH (n) WHERE n.%s = %s"
+                                   " SET n%s  " % (node_key, k, lab_string))
 
         self.To.commit_list_in_chunks(statements=list(statements),
                                       verbose=verbose,
