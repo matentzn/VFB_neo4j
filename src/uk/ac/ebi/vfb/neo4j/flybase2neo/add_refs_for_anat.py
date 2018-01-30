@@ -95,11 +95,12 @@ for d in dc:
     elif d['syns']:
         for syn in d['syns']:
             s = json.loads(syn)
+            for ref in s['xrefs']:
             statements.append(
                 roll_cypher_add_syn_pub_link(
                     sfid = d['short_form'],
-                    pub_id = d['id'],
-                    pub_id_typ = ['database'],
+                    pub_id = ref['id'],
+                    pub_id_typ = ref['database'],
                     s=s))
 
 nc.commit_list_in_chunks(statements, verbose=True, chunk_length=2000)
