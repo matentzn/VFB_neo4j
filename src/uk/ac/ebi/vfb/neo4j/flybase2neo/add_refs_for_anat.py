@@ -77,17 +77,21 @@ def roll_cypher_add_syn_pub_link(sfid, s, pub_id_typ, pub_id):
 
 
 nc.commit_list(["MERGE (:pub:Individual { FlyBase: 'Unattributed' })"])
-q = nc.commit_list(["MATCH (c) where c:Class or c:Individual return c.short_form, c.obo_synonym as syns, c.obo_definition_citation[0] as def"])
+q = nc.commit_list(["MATCH (c) where c:Class or c:Individual return c.short_form as short_form, c.obo_synonym as syns, c.obo_definition_citation as def"])
 dc = results_2_dict_list(q)
 statements = []
 for d in dc:
     if d['def']:
-        def_cit = json.loads(d['def'])
-        statements.append(roll_cypher_add_def_pub_link(
-            sfid = d['short_form'],
-            pub_id = d['id'],
-            pub_id_typ = 'def',
-            ))
+        for cit in d['def']:
+          if cit:
+            def_cit = json.loads(cit)
+            for ref in def_cit['oboXrefs']:
+              if ref['id']:
+                statements.append(roll_cypher_add_def_pub_link(
+                    sfid = d['short_form'],
+                    pub_id = ref['id'],
+                    pub_id_typ = ref['database'],
+                    ))
     elif d['syns']:
         for syn in d['syns']:
             s = json.loads(syn)
