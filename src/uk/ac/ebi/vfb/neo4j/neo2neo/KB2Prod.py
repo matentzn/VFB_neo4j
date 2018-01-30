@@ -67,7 +67,7 @@ ncm.move_edges(match="MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(s:Indiv
                node_key='iri',
                test_mode=False)
 ncm.move_edges(match="MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(o:Individual) "
-                     "WITH s MATCH (s)-[r]->(o) ",
+                     "WITH o MATCH (s)-[r]->(o) ",
                node_key='iri',
                test_mode=False)
 
