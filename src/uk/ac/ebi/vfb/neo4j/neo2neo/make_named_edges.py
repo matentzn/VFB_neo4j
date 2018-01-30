@@ -40,26 +40,40 @@ args = parser.parse_args()
 nc = neo4j_connect(base_uri = args.endpoint, 
                    usr = args.usr, pwd = args.pwd)
 
-def make_name_edges(typ, s='', o='', test_mode = False):
+# def make_name_edges(typ, s='', o='', test_mode = False):
+#     if test_mode:
+#         test = " limit 10"
+#     else:
+#         test = ""
+#     """ typ = edge label.  o, s = subject and object labels. These hould be pre prepended with ':'"""
+#     statements = ["MATCH (n%s)-[r:%s]->(m%s) RETURN n.short_form, r.label, m.short_form %s" % (s, typ, o, test)]
+#     r = nc.commit_list(statements)        
+#     triples = [x['row'] for x in r[0]['data']]
+#     statements = []
+#     # Iterate over, making named edges for labels (sub space for _)
+#     print("Processing %d triples" % len(triples))
+#     for t in triples:
+#         subj = t[0]
+#         rel = re.sub(' ', '_', t[1]) # In case any labels have spaces
+#         obj = t[2]
+#         # Merge ensures this doesn't lead to duplicated edges if already present:
+#         statements.append("MATCH (n {short_form:'%s'}),(m {short_form:'%s'}) " \
+#                           "MERGE (n)-[r:%s { type: '%s' }]->(m)" % (subj, obj, rel, typ)) 
+#     print("processing %s %s statements" % (len(statements), typ))    
+#     nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 10000)
+    
+
+def make_name_edges(typ, delete_old=False, test_mode = False):
     if test_mode:
         test = " limit 10"
     else:
         test = ""
-    """ typ = edge label.  o, s = subject and object labels. These hould be pre prepended with ':'"""
-    statements = ["MATCH (n%s)-[r:%s]->(m%s) RETURN n.short_form, r.label, m.short_form %s" % (s, typ, o, test)]
-    r = nc.commit_list(statements)        
-    triples = [x['row'] for x in r[0]['data']]
-    statements = []
-    # Iterate over, making named edges for labels (sub space for _)
-    print("Processing %d triples" % len(triples))
-    for t in triples:
-        subj = t[0]
-        rel = re.sub(' ', '_', t[1]) # In case any labels have spaces
-        obj = t[2]
-        # Merge ensures this doesn't lead to duplicated edges if already present:
-        statements.append("MATCH (n {short_form:'%s'}),(m {short_form:'%s'}) " \
-                          "MERGE (n)-[r:%s { type: '%s' }]->(m)" % (subj, obj, rel, typ)) 
-    print("processing %s %s statements" % (len(statements), typ))    
-    nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 10000)
-
+    if delete_old:
+        delete = " DELETE r"
+    else:
+        delete = ""
+    statements = ["MATCH (n)-[r:%s]->(m) WITH n, r MERGE (n)-[r2:replace(r.label,' ','_') {label:type(r),iri:r.iri}]->(m) %s%s" % (typ, delete, test)]    
+    nc.commit_list(statements)
+    
 make_name_edges(typ='Related', test_mode = args.test)
+
