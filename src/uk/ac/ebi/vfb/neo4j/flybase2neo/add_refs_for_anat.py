@@ -122,7 +122,7 @@ nc.commit_list_in_chunks(statements, verbose=True, chunk_length=2000)
 
 
 # tests
-obo_synonym_string = '[{"name":"IDFP","scope":"hasBroadSynonym","type":null,"xrefs":[{"database":"FlyBase","id":"FBrf0212704","description":null,"url":null}]},{"name":"vmpr","scope":"hasRelatedSynonym","type":null,"xrefs":[{"database":"FlyBase","id":"FBrf0193607","description":null,"url":null}]},{"name":"LAL","scope":"hasExactSynonym","type":"BrainName official abbreviation","xrefs":[{"database":"FlyBase","id":"FBrf0224194","description":null,"url":null}]}]'
-obo_synonym = json.loads(obo_synonym_string)
-obo_definition_citation_string = '{"definition":"A sense organ embedded in the integument and consisting of one or a cluster of sensory neurons and associated sensory structures, support cells and glial cells forming a single organized unit with a largely bona fide boundary.","oboXrefs":[{"database":"FlyBase","id":"FBrf0111704","description":null,"url":null}]}'
-obo_definition_citation = json.load(obo_definition_citation_string)
+# obo_synonym_string = '[{"name":"IDFP","scope":"hasBroadSynonym","type":null,"xrefs":[{"database":"FlyBase","id":"FBrf0212704","description":null,"url":null}]},{"name":"vmpr","scope":"hasRelatedSynonym","type":null,"xrefs":[{"database":"FlyBase","id":"FBrf0193607","description":null,"url":null}]},{"name":"LAL","scope":"hasExactSynonym","type":"BrainName official abbreviation","xrefs":[{"database":"FlyBase","id":"FBrf0224194","description":null,"url":null}]}]'
+# obo_synonym = json.loads(obo_synonym_string)
+# obo_definition_citation_string = '{"definition":"A sense organ embedded in the integument and consisting of one or a cluster of sensory neurons and associated sensory structures, support cells and glial cells forming a single organized unit with a largely bona fide boundary.","oboXrefs":[{"database":"FlyBase","id":"FBrf0111704","description":null,"url":null}]}'
+# obo_definition_citation = json.load(obo_definition_citation_string)
