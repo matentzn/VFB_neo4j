@@ -61,9 +61,9 @@ def roll_cypher_add_def_pub_link(sfid, pub_id_typ, pub_id):
     """Generates a Cypher statement that links an existing class
     to a pub node with the specified attribute.  Generates a new pub node
      if none exists."""
-    return "MATCH (a:Class { short_form : '%s' }) " \
-           "MERGE (p:pub:Individual { %s : '%s' }) " \
-           "MERGE (a)-[:has_reference { typ : 'def' }]->(p)" % (sfid, pub_id_typ, pub_id)
+    return "MATCH (a:Class { short_form : \"%s\" }) " \
+           "MERGE (p:pub:Individual { %s : \"%s\" }) " \
+           "MERGE (a)-[:has_reference { typ : \"def\" }]->(p)" % (sfid, pub_id_typ, pub_id)
 
 
 def roll_cypher_add_syn_pub_link(sfid, s, pub_id_typ, pub_id):
