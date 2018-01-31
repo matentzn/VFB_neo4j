@@ -96,8 +96,7 @@ for d in dc:
         for syn in d['syns']:
             s = json.loads(syn)
             for ref in s['xrefs']:
-            statements.append(
-                roll_cypher_add_syn_pub_link(
+                statements.append(roll_cypher_add_syn_pub_link(
                     sfid = d['short_form'],
                     pub_id = ref['id'],
                     pub_id_typ = ref['database'],
