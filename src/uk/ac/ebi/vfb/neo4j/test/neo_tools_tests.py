@@ -57,7 +57,7 @@ class TestContentMover(unittest.TestCase):
         assert 'Individual' in query_results[0]['nlab']
 
     def tearDown(self):
-        #self.ncm.To.commit_list(["MATCH (x)-[r]-(y) DELETE r", "MATCH (n) delete (n)"])
+        self.ncm.To.commit_list(["MATCH (x)-[r]-(y) DELETE r", "MATCH (n) delete (n)"])
         return
 
 
