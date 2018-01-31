@@ -70,6 +70,7 @@ def roll_cypher_add_syn_pub_link(sfid, s, pub_id_typ, pub_id):
     """Generates a Cypher statement that links an existing class
     to a pub node ..."""
     pub_id_typ = pub_id_typ.replace('.','_') # replace invalid dots from DB types such as 'answers.com'
+    pub_id_typ = pub_id_typ.replace(' ','_') # replace invalid spaces
     label = re.sub("'", "\'", s['name'])
     return  "MATCH (a:Class { short_form : \"%s\" }) " \
             "MERGE (p:pub:Individual { %s : \"%s\" }) " \
