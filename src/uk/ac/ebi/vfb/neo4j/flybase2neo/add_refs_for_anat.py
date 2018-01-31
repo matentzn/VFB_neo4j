@@ -57,27 +57,31 @@ supported_xrefs = {'FlyBase': 'FlyBase:FBrf\d{7}',
 #     return out
 
 
+def clean_pub_id_typ(sfid, pub_id_typ):
+    pub_id_typ = str(pub_id_typ).replace('.','_') # replace invalid dots from DB types such as 'answers.com'
+    pub_id_typ = pub_id_typ.replace(' ','_') # replace invalid spaces
+    if '[' in pub_id_typ:
+        print("\n\nNote: Invalid database %s referenced by %s\n\n" % (pub_id_typ, sfid)) 
+        pub_id_typ = pub_id_typ.replace('[','') # remove random '['
+    return pub_id_typ
+  
 def roll_cypher_add_def_pub_link(sfid, pub_id_typ, pub_id):
     """Generates a Cypher statement that links an existing class
     to a pub node with the specified attribute.  Generates a new pub node
      if none exists."""
-    pub_id_typ = str(pub_id_typ).replace('.','_') # replace invalid dots from DB types such as 'answers.com'
-    pub_id_typ = pub_id_typ.replace(' ','_') # replace invalid spaces
     return "MATCH (a:Class { short_form : \"%s\" }) " \
            "MERGE (p:pub:Individual { %s : \"%s\" }) " \
-           "MERGE (a)-[:has_reference { typ : \"def\" }]->(p)" % (sfid, pub_id_typ, pub_id)
+           "MERGE (a)-[:has_reference { typ : \"def\" }]->(p)" % (sfid, clean_pub_id_typ(sfid, pub_id_typ), pub_id)
 
 
 def roll_cypher_add_syn_pub_link(sfid, s, pub_id_typ, pub_id):
     """Generates a Cypher statement that links an existing class
     to a pub node ..."""
-    pub_id_typ = str(pub_id_typ).replace('.','_') # replace invalid dots from DB types such as 'answers.com'
-    pub_id_typ = pub_id_typ.replace(' ','_') # replace invalid spaces
     label = re.sub("'", "\'", s['name'])
     return  "MATCH (a:Class { short_form : \"%s\" }) " \
             "MERGE (p:pub:Individual { %s : \"%s\" }) " \
             "MERGE (a)-[:has_reference { typ : \"syn\", scope: \"%s\", synonym : \"%s\", cat: \"%s\" }]->(p)" \
-            "" % (sfid, pub_id_typ, pub_id, s['scope'], label, s['type'])
+            "" % (sfid, clean_pub_id_typ(sfid, pub_id_typ), pub_id, s['scope'], label, s['type'])
 
 
 nc.commit_list(["MERGE (:pub:Individual { FlyBase: 'Unattributed' })"])
