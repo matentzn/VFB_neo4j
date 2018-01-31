@@ -45,6 +45,12 @@ ni.add_default_constraint_set(['DataSet', 'Site', 'License', 'Individual'])
 
 ncm = neo4jContentMover(kb,prod)
 
+
+# Labels may not match on nodes already loaded.  The following finds all Individuals in KB that are in Prod,
+# checks for differences in labels, and adds them to the equivalent node in Prod if they match.
+ncm.move_node_labels(match="MATCH (n:Individual) ",
+                     node_key='iri')
+
 ## move channels and directly associated edges
 
 ## Move all instance of channel:
@@ -53,13 +59,6 @@ channel_match = "MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(n:Individual
 ncm.move_nodes(match=channel_match, key='iri', test_mode=False)
 
 
-# Move all edges one step from a channel
-# ncm.move_node_labels(match="MATCH (:Class { label: 'channel'})-[:INSTANCEOF]-(n:Individual)")
-# channel nodes are moved and so will already have appropriate labels.
-# Nodes connected to channel by some edge may already be in Prod (from OWL load) and so may lack some labels
-# required for edge match to work.  We add then here:
-ncm.move_node_labels(match="MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(s:Individual) WITH s MATCH (s)-[r]-(n)",
-                     node_key='iri')
 
 # Then add edges in each direction independently (could be bundled with edge mover but going with simple solution here)
 ncm.move_edges(match="MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(s:Individual) "
