@@ -8,6 +8,7 @@ import time
 from datetime import datetime, timedelta
 import math
 #import token
+import argparse
 
 
 '''
@@ -20,6 +21,29 @@ Tools for connecting to the neo4j REST API
 
 #Could also use py2neo, but this is a bit heavy duty for some uses
 
+
+def cli_credentials():
+    """Parses command line credentials for Neo4J rest connection;
+    Optionally specifcy additional args as a list of dicts with
+    args required by argparse.add_argument().  Order in list
+    specified arg order"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("endpoint",
+                    help="Endpoint for connection to neo4J prod")
+    parser.add_argument("usr",
+                    help="username")
+    parser.add_argument("pwd",
+                    help="password")
+#    if additional_args:
+#        for a in additional_args:
+#            parser.add_argument(**a)  # how to get this to work with non kewyord args
+    return parser.parse_args()
+
+def cli_neofj_connect():
+    args = cli_credentials()
+    return neo4j_connect(base_uri=args.endpoint,
+                         usr=args.usr,
+                         pwd=args.pwd)
 
 
 def chunks(l, n):
