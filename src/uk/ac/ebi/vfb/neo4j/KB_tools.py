@@ -64,9 +64,9 @@ class kb_writer (object):
         Returns REST API output.
         Optionally set verbosity and chunk length for commits."""
         self.output = self.nc.commit_list_in_chunks(
-                                      statements  = self.statements, 
-                                      verbose = verbose, 
-                                      chunk_length = chunk_length)
+                                      statements=self.statements,
+                                      verbose=verbose,
+                                      chunk_length=chunk_length)
         self.statements = []
         return self.output
 
@@ -440,9 +440,11 @@ class KB_pattern_writer(object):
                               label,
                               start,
                               template,
-                              anatomical_type = '',
-                              anatomy_attributes =  {},
-                              dbxrefs = {}):
+                              anatomical_type='',
+                              index = False,
+                              anatomy_attributes={},
+                              dbxrefs={}
+                              ):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
         label: Name of anatomical individual
@@ -495,7 +497,14 @@ class KB_pattern_writer(object):
             self.ew.add_named_type_ax(s = anat_iri, o = anatomical_type)
         # Add facts    
         self.ew.add_fact(s=channel_iri, r=self.relation_lookup['depicts'], o=anat_iri)
-        self.ew.add_fact(s=channel_iri, r=self.relation_lookup['in register with'], o=template)
+        if index:
+            edge_annotations = {'index': index}
+        else:
+            edge_annotations = {}
+        self.ew.add_fact(s=channel_iri,
+                         r=self.relation_lookup['in register with'],
+                         o=template,
+                         edge_annotations=edge_annotations)
         self.ew.commit()
         return {'channel': channel_iri, 'anatomy': anat_iri}
 
