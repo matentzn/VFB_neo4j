@@ -12,6 +12,17 @@ General classes
 @author: davidos
 '''
 
+### Sketch of usage:
+# 1. query for expressed gene products
+# generate feature, relation gp -> FBti/FBtp -> Allele (typed) -> gene
+# Query genotype table -> generate genotypes and
+
+def clean_sgml_tags(sgml_string):
+    sgml_string = re.sub('<up>', '[', sgml_string)
+    sgml_string = re.sub('<\\up>', ']', sgml_string)
+    sgml_string = re.sub('<\\up>', '[[', sgml_string)
+    sgml_string = re.sub("<\\\down>", ']]', sgml_string)
+    return sgml_string
 
 def dict_cursor(cursor):
     """Takes cursor as an input, following execution of a query, returns results as a list of dicts"""
@@ -25,9 +36,10 @@ def dict_cursor(cursor):
     return l
 
 
-
 def get_fb_conn():
-    return psycopg2.connect(dbname = 'flybase', host ='chado.flybase.org', user = 'flybase')
+    return psycopg2.connect(dbname='flybase',
+                            host='chado.flybase.org',
+                            user='flybase')
 
 
 class FB2Neo(object):
@@ -49,7 +61,7 @@ class FB2Neo(object):
         returns results as interable of dicts keyed on columns names"""
         cursor = self.conn.cursor() # Investigate using with statement
         cursor.execute(query)
-        dc  = dict_cursor(cursor)
+        dc = dict_cursor(cursor)
         cursor.close()
         return dc
         
@@ -59,10 +71,7 @@ class FB2Neo(object):
     def close(self):
         self.close()  # Investigate implementing using with statement.  Then method not required.
     
-    def update_features(self, fbids):
-        pass
-    
-        
+
 
 class FeatureRelationship(FB2Neo):
     """A class for navigating the feature relationship graph.  
@@ -100,34 +109,39 @@ class FeatureRelationship(FB2Neo):
         return self.get_objs(subject_ids, chado_rel='associated_with', out_rel='', o_idp='FBal')
 
         
-class nameFeatures(FB2Neo):
+class NameFeatures(FB2Neo):
     """Looks up synonyms and official symbol in unicode
     Adds them to Neo.
     """
-    ### Aim here is to add full names and synonyms.  Query looks fine.  Seems a bit odd as a class. 
+    ### Aim here is to add full names and synonyms.  Query looks fine.
+    ### Seems a bit odd as a class.
     ### Why would you pass this round as an object?
 
-    ### If implmented in the same way as other ontology classes, then could add synonyms on edge links to pubs.
-    ### This would rather bloat the DB though...  Or Should I not be worrying about size...
-    def __init__(self):
-        self.init()
-        self.query = "SELECT f.uniquename as fbid, s.name as ascii_name, stype.name AS stype, " \
-                    "fs.is_current, s.synonym_sgml as unicode_name " \
-                    "FROM feature f " \
-                    "JOIN feature_synonym fs on (f.feature_id=fs.feature_id) " \
-                    "JOIN synonym s on (fs.synonym_id=s.synonym_id) " \
-                    "JOIN cvterm stype on (s.type_id=stype.cvterm_id) " \
-                    "WHERE f.uniquename IN ('%s')"
+    ### If implmented in the same way as other ontology classes,
+    ### then could add synonyms on edge links to pubs.
+    ### This would rather bloat the DB though...
+    ### Or Should I not be worrying about size...
 
+    def __init__(self, endpoint, usr, pwd):
+        """Specify Neo4J server endpoint, username and password"""
+        self._init(endpoint, usr, pwd)
+        self.query = "SELECT f.uniquename as fbid, s.name as ascii_name, " \
+                     "stype.name AS stype, " \
+                     "fs.is_current, s.synonym_sgml as unicode_name " \
+                     "FROM feature f " \
+                     "JOIN feature_synonym fs on (f.feature_id=fs.feature_id) " \
+                     "JOIN synonym s on (fs.synonym_id=s.synonym_id) " \
+                     "JOIN cvterm stype on (s.type_id=stype.cvterm_id) " \
+                     "WHERE f.uniquename IN ('%s')"
 
-    def nameSynonymLookup(self, fbids):
+    def name_synonym_lookup(self, fbids):
         """Makes unicode name primary.  Makes everything else a synonym"""
         #stypes: symbol nickname synonym fullname
         dc = self.run_query(self.query % "','".join(fbids))
         results = {}
         old_key = ''
         for d in dc:
-            key = d['uniquename']
+            key = d['fbid']
             if not (key == old_key):
                 results[d['fbid']] = {}
                 results[d['fbid']]['synonyms'] = []
@@ -142,7 +156,7 @@ class nameFeatures(FB2Neo):
     def addSynsToNeo(self, fbids):
         """Adds unicode label and a list of synonyms.
         """
-        names = self.nameSynonymLookup(fbids)
+        names = self.name_synonym_lookup(fbids)
         statements = []  
         for fbid, v in names.items():            
             statements.append("MATCH (n:short_form : '%s') SET n.label = '%s', n.synonyms = %s"  
@@ -150,12 +164,10 @@ class nameFeatures(FB2Neo):
         self.nc.commit_list_in_chunks(statements)         
 
 class FeatureType(FB2Neo):
-    
-    def __init__(self):
-        self._init()
         
     def grossType(self, fbids):
-        query = "SELECT f.uniquename AS fbid, typ.name as ftype; FROM feature f " \
+        query = "SELECT f.uniquename AS fbid, c.name as ftype " \
+                "FROM feature f " \
                 "JOIN cvterm c on f.type_id=c.cvterm_id " \
                 "WHERE f.uniquename in ('%s')" % "','".join(fbids)  
         dc = self.run_query(query)
@@ -201,22 +213,23 @@ class FeatureType(FB2Neo):
     def abberationType(self, abbs):
         """abbs = a list of abberation fbids
         Returns a list of (fbid, type) tuples where type is a SO ID"""
-        
+        # Super slow and broken!
         results = []
         abbs_proc = [] # For tracking processed abbs
-        query = "SELECT f.uniquename AS fbid db.name AS db, dbx.accession AS acc " \
-        "FROM feature f " \
-        "JOIN cvterm gross_type ON gross_type.cvterm_id=f.type_id"
-        "JOIN feature_cvterm fc ON fc.feature_id = f.feature_id " \
-        "JOIN cvterm fine_type ON fine_type.cvterm_id = fc.cvterm_id " \
-        "JOIN feature_cvtermprop fctp ON fctp.feature_cvterm_id = fc.feature_cvterm_id " \
-        "JOIN cvterm meta ON meta.cvterm_id = fctp.type_id " \
-        "JOIN cvterm gtyp ON gtyp.cvterm_id = f.type_id " \
-        "JOIN dbxref dbx ON fine_type.dbxref_id = dbx.dbxref_id"
-        "JOIN db ON db.dbxref_id = dbx.dbxref_id"
-        "WHERE gross_type.name = 'chromosome_structure_variation' -- double checks input gross type" \
-        "AND  meta.name = 'wt_class' " \
-        "AND f.uniquename in ('%s')"
+        query = "SELECT f.uniquename AS fbid, db.name AS db," \
+                "dbx.accession AS acc " \
+                "FROM feature f " \
+                "JOIN cvterm gross_type ON gross_type.cvterm_id=f.type_id " \
+                "JOIN feature_cvterm fc ON fc.feature_id = f.feature_id " \
+                "JOIN cvterm fine_type ON fine_type.cvterm_id = fc.cvterm_id " \
+                "JOIN feature_cvtermprop fctp ON fctp.feature_cvterm_id = fc.feature_cvterm_id " \
+                "JOIN cvterm meta ON meta.cvterm_id = fctp.type_id " \
+                "JOIN cvterm gtyp ON gtyp.cvterm_id = f.type_id " \
+                "JOIN dbxref dbx ON fine_type.dbxref_id = dbx.dbxref_id " \
+                "JOIN db ON dbx.db_id = db.db_id " \
+                "WHERE gross_type.name = 'chromosome_structure_variation' -- double checks input gross type" \
+                "AND  meta.name = 'wt_class'" \
+                "AND f.uniquename in (%s)" % ("'" +"'.'".join(abbs))
         dc = self.run_query(query)
         for d in dc:
             results.append((d['fbid'], d['db'] + '_' + d['acc']))
@@ -224,15 +237,15 @@ class FeatureType(FB2Neo):
         [results.append((a, 'SO_0000110')) for a in abbs if a not in abbs_proc] # Defaulting to generic feature id not abb
         return results
             
-        def fineType():
-            gt = self.grossType()
-            abbs_list = []
-            results = []
-            for g in gt:
-                if g[1] == '':
-                    abbs_list.append(g[0])
-                else:
-                    results.append(g)
+    def fineType(self, fbids):
+        gt = self.grossType()
+        abbs_list = []
+        results = []
+        for g in gt:
+            if g[1] == '':
+                abbs_list.append(g[0])
+            else:
+                results.append(g)
             results.extend(self.abberationType(abbs_list))
             
 
