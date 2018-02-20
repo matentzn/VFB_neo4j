@@ -95,7 +95,14 @@ class neo4j_connect():
                 chunk_results.append(r)
             i += 1
         return chunk_results
-        
+
+    def commit_csv(self, url, statement, chunk_size=1000, sep=","):
+        # May need some configuration to work with file://...
+        cypher = "USING PERIODIC COMMIT %d " \
+                 "LOAD CSV WITH HEADERS FROM '%s' AS line FIELDTERMINATOR '%s' " \
+                 "%s" % (chunk_size, url, sep, statement)
+        self.commit_list([cypher])
+
     def rest_return_check(self, response):
         """Checks status response to post. Prints warnings to STDERR if not OK.
         If OK, checks for errors in response. Prints any present as warnings to STDERR.

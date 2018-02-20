@@ -1,4 +1,4 @@
-from .dbtools import FeatureRelationship, NameFeatures, FeatureType
+from .dbtools import FeatureMover
 import warnings
 
 # General strategy:
@@ -14,20 +14,22 @@ endpoint = sys.argv[1]
 usr = sys.argv[2]
 pwd = sys.argv[3]
 
-relater = FeatureRelationship(endpoint, usr, pwd)
-namer = NameFeatures(endpoint, usr, pwd)
-typer = FeatureType(endpoint, usr, pwd)
+fm = FeatureMover(endpoint, usr, pwd)
 def exp_gen(): return # code for generating and wiring up expression patterns
 
 
 # Query feature_expression => pub feature and fbex
-feps = relater.run_query("SELECT ...")
+feps = fm.query_fb("SELECT ...")
+
+# How to structure for batch
 
 for fep in feps:
+    # Split feps into batches for reasonable in clauses.
+    # List comp => set X to add & fill
     pub = fep['pub'] 
     # -> merge pub + set details (if new)
     feat = fep['feature'] 
-    names = namer(feat)
+    names = 
     typ = type(feat)
     if typ == '':
         x = 1 # Create
