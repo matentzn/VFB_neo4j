@@ -434,14 +434,13 @@ class KB_pattern_writer(object):
             'SB-SEM' : 'http://purl.obolibrary.org/obo/FBbi_00000585'
             }
 
-       
     def add_anatomy_image_set(self,
                               imaging_type,
                               label,
                               start,
                               template,
                               anatomical_type='',
-                              index = False,
+                              index=False,
                               anatomy_attributes={},
                               dbxrefs={}
                               ):
