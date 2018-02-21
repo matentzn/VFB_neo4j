@@ -2,7 +2,8 @@ sudo: required
 
 before_install:
   - mkdir csv_imports
-  - docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=none --env=NEOREADONLY=false --volume=csv_imports:/import virtualflybrain/docker-vfb-neo4j:enterprise 
+  - docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=none --volume=csv_imports:/import virtualflybrain/docker-vfb-neo4j:enterprise 
+  - docker run -d --name db -p 7475:7474 -p 7688:7687 --env=NEO4J_AUTH=none --volume=csv_imports:/import virtualflybrain/docker-vfb-neo4j-productiondb 
   - sleep 30s
 
 services:
@@ -21,7 +22,7 @@ install:
   
 script:
   - docker logs db
-  - curl -u neo4j:neo4j "http://localhost:7474/db/data/"
+  - curl -sSf -u neo4j:neo4j "http://localhost:7474/db/data/"
   - echo $VN
   - cd src
   - python -m $VN.test.KB_tools_test
