@@ -34,4 +34,7 @@ script:
   - cd src
   - python -m $VN.test.KB_tools_test
   - python -m $VN.test.neo_tools_tests
+  - tree
+  - ls
+  - ls csv_imports
 
