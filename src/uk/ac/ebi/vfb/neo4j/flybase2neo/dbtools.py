@@ -18,6 +18,8 @@ General classes
 # generate feature, relation gp -> FBti/FBtp -> Allele (typed) -> gene
 # Query genotype table -> generate genotypes and
 
+
+
 def clean_sgml_tags(sgml_string):
     sgml_string = re.sub('<up>', '[', sgml_string)
     sgml_string = re.sub('<\\\up>', ']', sgml_string)
@@ -69,6 +71,8 @@ class FB2Neo(object):
         """Specify Neo4J server endpoint, username and password"""
         self._init(endpoint, usr, pwd)
         self.file_path = file_path  # A path for temp csv files
+        self.fb_base_URI = 'http://www.flybase.org/reports/'
+
     
     def _init(self, endpoint, usr, pwd):
         self.conn = get_fb_conn()
@@ -86,6 +90,16 @@ class FB2Neo(object):
         
     def commit(self):
         self.conn.commit()
+
+    def commit_via_csv(self, statement, dict_list):
+        df = pd.DataFrame.from_records(dict_list)
+        df.to_csv(self.file_path + "tmp.csv", sep='\t')
+        self.nc.commit_csv("file:///" + "tmp.csv",
+                           statement=statement,
+                           sep="\t")
+        # add something to delete csv here.
+
+
         
     def close(self):
         self.close()  # Investigate implementing using with statement.  Then method not required.
@@ -125,11 +139,9 @@ class FeatureMover(FB2Neo):
         adding a unicode label and a list of synonyms"""
         names = self.name_synonym_lookup(fbids)
         nl = [{ 'fbid': k , 'synonyms' : v['synonyms'].join('|'), 'label' : v['label']} for k,v in names.items()]
-        ndf = pd.DataFrame.from_records(nl)
-        ndf.to_csv(self.file_path, sep='\t')
         statement = "MERGE (n:Feature { short_form : line.fbid } ) " \
                     "SET n.label = line.label , n.synonyms = split(line.synonyms, '|')" # Need to set iri
-        self.nc.commit_csv("file://" + self.file_path, statement = statement, sep="\t")
+        self.commit_via_csv(statement, nl)
 
     # Typing
 
@@ -160,13 +172,10 @@ class FeatureMover(FB2Neo):
             raise ValueError('detail arg invalid %s' % detail)
 
         feature_classifications = [{'child': t[0], 'parent': t[1]} for t in types]
-        fcdf = pd.DataFrame.from_records(feature_classifications)
-        fcdf.to_csv(sep="\t")
         statement = "MATCH (p:Class { short_form: line.parent })" \
                     ",(c:Feature { short_form: line.child }) " \
                     "MERGE (p)<-[:SUBCLASSOF]-(c)"
-
-        self.nc.commit_csv("file://" + self.file_path, statement = statement, sep="\t")
+        self.commit_via_csv(statement, feature_classifications)
 
     def abberationType(self, abbs):
         """abbs = a list of abberation fbids
@@ -255,9 +264,7 @@ class FeatureMover(FB2Neo):
         statement = "MATCH (s:Feature { short_form: line.subject}, (o:Feature { short_form: line.object}) " \
                     "MERGE (s)-[r:line.relation]->(o)"
         triple_dicts = [{'subject': t[0], 'relation': t[1], 'object': t[2]} for t in triples]
-        td_df = pd.DataFrame.from_records(triple_dicts)
-        td_df.to_csv(sep='\t')
-        self.nc.commit_csv("file://" + self.file_path, statement=statement, sep="\t")
+        self.commit_via_csv(statement, triple_dicts)
 
             
 
