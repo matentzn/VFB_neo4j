@@ -19,6 +19,7 @@ install:
   - pip install -r requirements.txt
   
 script:
+  - mkdir csv_imports
   - docker logs db
   - curl -u neo4j:neo4j "http://localhost:7474/db/data/"
   - echo $VN
