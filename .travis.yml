@@ -1,7 +1,7 @@
 sudo: required
 
 before_install:
-  - docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=none --env=NEOREADONLY=false -—volume csv_imports:/import virtualflybrain/docker-vfb-neo4j  - sleep 30s
+  - docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=none --env=NEOREADONLY=false -—volume=csv_imports:/import virtualflybrain/docker-vfb-neo4j  - sleep 30s
   - sleep 30s
 
 services:
