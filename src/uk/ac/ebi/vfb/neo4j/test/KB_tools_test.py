@@ -156,11 +156,13 @@ class TestKBPatternWriter(unittest.TestCase):
         statements = []
         for k,v in self.kpw.relation_lookup.items():
             short_form = re.split('[/#]', v)[-1]
-            statements.append("MERGE (p:Property { iri : '%s', label: '%s', short_form : '%s' }) "% (v,k, short_form))
+            statements.append("MERGE (p:Property { iri : '%s', label: '%s', short_form : '%s' }) " %
+                              (v, k, short_form))
 
         for k,v in self.kpw.class_lookup.items():
             short_form = re.split('[/#]', v)[-1]
-            statements.append("MERGE (p:Class { iri : '%s', label: '%s', short_form : '%s' }) "% (v,k, short_form))
+            statements.append("MERGE (p:Class { iri : '%s', label: '%s', short_form : '%s' }) " %
+                              (v, k, short_form))
 
         nc.commit_list(statements)
         statements = []
@@ -169,19 +171,24 @@ class TestKBPatternWriter(unittest.TestCase):
 
         statements.append("MERGE (p:Individual:Template { iri : 'http://fubar/template_of_dave', label: 'template_of_dave' })")
 
-        statements.append("MERGE (ds:DataSet { short_form : 'fu' }) ")
+        statements.append("MERGE (s:Site:Individual { short_form : 'fu' }) ")
+
+        statements.append("MERGE (ds:DataSet:Individual { short_form : 'dosumis2020' }) ")
+
 
         nc.commit_list(statements)
 
     def testAddAnatomyImageSet(self):
-        t = self.kpw.add_anatomy_image_set(
+        self.kpw.add_anatomy_image_set(
+            dataset='dosumis2020',
             imaging_type='computer graphic',
             label='lobulobus of Dave',
             template='http://fubar/template_of_dave',
             anatomical_type='http://fubar/lobulobus',
-            dbxrefs= { 'fu' : 'bar'},
-            start= 100
+            dbxrefs={'fu': 'bar'},
+            start=100
         )
+
 
 
 if __name__ == "__main__":
