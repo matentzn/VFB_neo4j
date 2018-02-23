@@ -50,7 +50,7 @@ def map_feature_type(fbid, ftype):
                'insertion_site': 'SO_0001218',
                 'transposable_element_insertion_site': 'SO_0001218',
                 'natural_transposon_isolate_named': 'SO_0000797',
-                'chromosome_structure_variation' : 'SO_1000183'
+                'chromosome_structure_variation': 'SO_1000183'
                 }
     if ftype == 'gene':
         if re.match('FBal', fbid):
@@ -128,12 +128,12 @@ class FeatureMover(FB2Neo):
                 if out: results.append(out)
                 out = {}
                 out['fbid'] = d['fbid']
-                out['synonyms'] = []
+                out['synonyms'] = set()
             if d['stype'] == 'symbol' and d['is_current']:
                 out['label'] = clean_sgml_tags(d['unicode_name'])
             else:
-                out['synonyms'].append(clean_sgml_tags(d['ascii_name']))
-                out['synonyms'].append(clean_sgml_tags(d['unicode_name']))
+                out['synonyms'].add(clean_sgml_tags(d['ascii_name']))
+                out['synonyms'].add(clean_sgml_tags(d['unicode_name']))
             old_key = key
         return results
 
@@ -141,9 +141,12 @@ class FeatureMover(FB2Neo):
         """Takes a list of fbids, generates a csv and uses this to merge feature nodes,
         adding a unicode label and a list of synonyms"""
         names = self.name_synonym_lookup(fbids)
+        proc_names = [{'fbid': r['fbid'], 'label': r['label'],
+                       'synonyms': '|'.join(r['synonyms'])}
+                      for r in names] # bit ugly...
         statement = "MERGE (n:Feature { short_form : line.fbid } ) " \
                     "SET n.label = line.label , n.synonyms = split(line.synonyms, '|')" # Need to set iri
-        self.commit_via_csv(statement, names)
+        self.commit_via_csv(statement, proc_names)
 
     # Typing
 
@@ -263,10 +266,13 @@ class FeatureMover(FB2Neo):
         objects = [t[2] for t in triples]
         self.add_features(objects)
         self.addTypes2Neo(objects)
-        statement = "MATCH (s:Feature { short_form: line.subject}), (o:Feature { short_form: line.object}) " \
-                    "MERGE (s)-[r:line.relation]->(o)"
-        triple_dicts = [{'subject': t[0], 'relation': t[1], 'object': t[2]} for t in triples]
-        self.commit_via_csv(statement, triple_dicts)
+        statements = []
+        for t in triples:
+            statements.append(
+                "MATCH (s:Feature { short_form: '%s'}), (o:Feature { short_form: '%s'}) " \
+                "MERGE (s)-[r:%s]->(o)" % (t[0], t[2], t[1])
+            )
+        self.nc.commit_list_in_chunks(statements)
 
             
 
