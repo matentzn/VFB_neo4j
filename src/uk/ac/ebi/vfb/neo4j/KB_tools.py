@@ -424,7 +424,8 @@ class KB_pattern_writer(object):
             'depicts': 'http://xmlns.com/foaf/0.1/depicts',
             'in register with': 'http://purl.obolibrary.org/obo/RO_0002026',
             'is specified output of': 'http://purl.obolibrary.org/obo/OBI_0000312',
-            'hasDbXref': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref'
+            'hasDbXref': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
+            'has_source': 'http://purl.org/dc/terms/source'
             }
 
         self.class_lookup = {
@@ -435,6 +436,7 @@ class KB_pattern_writer(object):
             }
 
     def add_anatomy_image_set(self,
+                              dataset,
                               imaging_type,
                               label,
                               start,
@@ -468,13 +470,19 @@ class KB_pattern_writer(object):
                          IRI=anat_iri,
                          attribute_dict=anatomy_attributes)
         self.ni.commit()
+        #dataset_short_form = self.ni.nc.commit_list(["MATCH (ds:DataSet) WHERE ds.label = %s RETURN ds.short_form" % dataset])
+        self.ew.add_annotation_axiom(s=anat_short_form,
+                                     r='has_source',
+                                     o=dataset,
+                                     match_on='short_form')
+
         if dbxrefs:
             for db, acc in dbxrefs.items():
                 self.ew.add_annotation_axiom(s=anat_short_form,
                                              r='hasDbXref',
                                              o=db,
-                                             match_on = 'short_form',
-                                             edge_annotations = { 'accession' : acc }
+                                             match_on='short_form',
+                                             edge_annotations={'accession': acc}
                                              )
 
         self.ni.add_node(labels=['Individual'],
@@ -493,9 +501,12 @@ class KB_pattern_writer(object):
                                  r=self.relation_lookup['is specified output of'],
                                  o=self.class_lookup[imaging_type])
         if anatomical_type:
-            self.ew.add_named_type_ax(s = anat_iri, o = anatomical_type)
+            self.ew.add_named_type_ax(s=anat_iri,
+                                      o=anatomical_type)
         # Add facts    
-        self.ew.add_fact(s=channel_iri, r=self.relation_lookup['depicts'], o=anat_iri)
+        self.ew.add_fact(s=channel_iri,
+                         r=self.relation_lookup['depicts'],
+                         o=anat_iri)
         if index:
             edge_annotations = {'index': index}
         else:
@@ -507,9 +518,26 @@ class KB_pattern_writer(object):
         self.ew.commit()
         return {'channel': channel_iri, 'anatomy': anat_iri}
 
-    def add_dataSet(self):
-        #Stub
-        return
+    def add_dataSet(self, name, license, pub='', description='', dataset_spec_text='', site=''):
+        self.ni.add_node(labels=['Individual', 'DataSet'],
+                         IRI=map_iri('data') + name,
+                         attribute_dict={'label' : name,
+                                         'short_form' : name,
+                                         'description' : description,
+                                         'dataset_spec_text' : dataset_spec_text}
+                         )
+        self.ew.add_annotation_axiom(s=name,
+                                     r='license',
+                                     o=license)
+
+        if site: self.ew.add_annotation_axiom(s=name,
+                                              r='hasDbXref',
+                                              o=site)
+
+        if pub: self.ew.add_annotation_axiom(s=name,
+                                             r='references',
+                                             o=pub)
+
 
 
 
