@@ -27,8 +27,10 @@ from ..curie_tools import map_iri
 # TODO: Add lookup for attributes -> Properties.  Ideally this would be with a specific cypher label for APs.
 # May want to follow a prefixed pattern to indicate OWL compatible APs.
 
+def get_sf(iri):
+    """Get a short form from an iri."""
+    return re.split('[#/]', iri)[-1]
 
-    
 
 def gen_id(idp, ID, length, id_name):
     """
@@ -443,6 +445,7 @@ class KB_pattern_writer(object):
                               template,
                               anatomical_type='',
                               index=False,
+                              center=(),
                               anatomy_attributes={},
                               dbxrefs={}
                               ):
@@ -457,28 +460,25 @@ class KB_pattern_writer(object):
         ### TODO: Extend to include site and accession for dbxrefs.
         
         # TBD: Should this really all run on IRIs?
-        
-        ### IRI gen is an issue because node_importer assumes a single
-        #### ID scheme, but we need different schemes for anatomy and 
-        #### channel
+
+
         anat_id = self.anat_iri_gen.generate(start)
-        anat_iri = anat_id['iri']
-        anat_short_form = anat_id['short_form']
-        channel_iri = self.channel_iri_gen.generate(start)['iri']        
+        channel_id = self.channel_iri_gen.generate(start)
+
         anatomy_attributes['label'] = label
         self.ni.add_node(labels=['Individual'],
-                         IRI=anat_iri,
+                         IRI=anat_id['iri'],
                          attribute_dict=anatomy_attributes)
         self.ni.commit()
         #dataset_short_form = self.ni.nc.commit_list(["MATCH (ds:DataSet) WHERE ds.label = %s RETURN ds.short_form" % dataset])
-        self.ew.add_annotation_axiom(s=anat_short_form,
-                                     r='has_source',
+        self.ew.add_annotation_axiom(s=anat_id['short_form'],
+                                     r='source',
                                      o=dataset,
                                      match_on='short_form')
 
         if dbxrefs:
             for db, acc in dbxrefs.items():
-                self.ew.add_annotation_axiom(s=anat_short_form,
+                self.ew.add_annotation_axiom(s=anat_id['short_form'],
                                              r='hasDbXref',
                                              o=db,
                                              match_on='short_form',
@@ -486,7 +486,7 @@ class KB_pattern_writer(object):
                                              )
 
         self.ni.add_node(labels=['Individual'],
-                         IRI=channel_iri,
+                         IRI=channel_id['iri'],
                          attribute_dict={'label': label + '_c'}
                          )
         self.ni.commit()
@@ -497,46 +497,58 @@ class KB_pattern_writer(object):
         #template = x['c.iri']
         
 
-        self.ew.add_anon_type_ax(s = channel_iri, 
+        self.ew.add_anon_type_ax(s = channel_id['iri'],
                                  r=self.relation_lookup['is specified output of'],
                                  o=self.class_lookup[imaging_type])
         if anatomical_type:
-            self.ew.add_named_type_ax(s=anat_iri,
-                                      o=anatomical_type)
+            self.ew.add_named_type_ax(s=anat_id['short_form'],
+                                      o=anatomical_type,
+                                      match_on='short_form')
         # Add facts    
-        self.ew.add_fact(s=channel_iri,
+        self.ew.add_fact(s=channel_id['iri'],
                          r=self.relation_lookup['depicts'],
-                         o=anat_iri)
-        if index:
-            edge_annotations = {'index': index}
-        else:
-            edge_annotations = {}
-        self.ew.add_fact(s=channel_iri,
-                         r=self.relation_lookup['in register with'],
-                         o=template,
-                         edge_annotations=edge_annotations)
-        self.ew.commit()
-        return {'channel': channel_iri, 'anatomy': anat_iri}
+                         o=anat_id['iri'])
 
-    def add_dataSet(self, name, license, pub='', description='', dataset_spec_text='', site=''):
+        edge_annotations = {}
+        if index: edge_annotations['index'] = index
+        if center: edge_annotations['center'] = center
+
+        # if template == 'self':
+        #    template = channel_iri
+        self.ew.add_fact(s=channel_id['short_form'],
+                         r=get_sf(self.relation_lookup['in register with']),
+                         o=template,
+                         edge_annotations=edge_annotations,
+                         match_on='short_form')
+        self.ew.commit()
+        return {'channel': channel_id['iri'], 'anatomy': anat_id['iri']}
+
+    def add_dataSet(self, name, license, pub='',
+                    description='', dataset_spec_text='', site=''):
+
         self.ni.add_node(labels=['Individual', 'DataSet'],
                          IRI=map_iri('data') + name,
-                         attribute_dict={'label' : name,
-                                         'short_form' : name,
-                                         'description' : description,
-                                         'dataset_spec_text' : dataset_spec_text}
-                         )
+                         attribute_dict={
+                             'label': name,
+                             'short_form': name,
+                             'description': description,
+                             'dataset_spec_text': dataset_spec_text})
+        self.ni.commit()
         self.ew.add_annotation_axiom(s=name,
                                      r='license',
-                                     o=license)
+                                     o=license,
+                                     match_on='short_form')
+        if site:
+            self.ew.add_annotation_axiom(s=name,
+                                         r='hasDbXref',
+                                         o=site,
+                                         match_on='short_form')
+        if pub:
+            self.ew.add_annotation_axiom(s=name,
+                                         r='references',
+                                         o=pub,
+                                         match_on='short_form')
 
-        if site: self.ew.add_annotation_axiom(s=name,
-                                              r='hasDbXref',
-                                              o=site)
-
-        if pub: self.ew.add_annotation_axiom(s=name,
-                                             r='references',
-                                             o=pub)
 
 
 
