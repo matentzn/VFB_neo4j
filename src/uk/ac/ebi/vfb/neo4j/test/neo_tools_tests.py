@@ -31,7 +31,7 @@ class Test_commit(unittest.TestCase):
     def test_commit_from_local_csv(self):
         dl = [{'fu': 'A', 'bar': 'B'}, {'fu': 'D', 'bar': 'E'}]
         df = pd.DataFrame.from_records(dl)
-        self.nc.commit_csv('file:///test.tsv',
+        self.nc.commit_csv('file:///type_by_name_test.tsv',
                            statement='CREATE (n:fu { id : line.fu})')
         # Needs correct setup of neo filepaths
 
