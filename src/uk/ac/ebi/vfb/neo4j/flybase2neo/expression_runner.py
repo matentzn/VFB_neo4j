@@ -36,8 +36,12 @@ fm.add_features(gene_products)
 fm.addTypes2Neo(gene_products)
 genes = fm.gp2Gene(gene_products)
 transgenes = fm.gp2Transgene(gene_products)
+
 fm.add_feature_relations(genes)
 fm.add_feature_relations(transgenes)
+
+# Construct gene expression pattern
+# Construc transgene expression pattern
 
 add_pubs(pubs)
 
