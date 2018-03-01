@@ -102,6 +102,8 @@ class FB2Neo(object):
         return dc
         
     def commit(self):
+        #probably better to call this FB commit?
+        # Ermm - actually - waht is this for?
         self.conn.commit()
 
     def commit_via_csv(self, statement, dict_list):
@@ -116,6 +118,14 @@ class FB2Neo(object):
         
     def close(self):
         self.close()  # Investigate implementing using with statement.  Then method not required.
+
+
+class pubMover(FB2Neo):
+
+    def fu(self):
+        return
+
+
 
 class FeatureMover(FB2Neo):
 
@@ -326,7 +336,7 @@ class expression_writer(FB2Neo):
         exp = self.query_fb(query)
 
         # make dict keyed on FBex : TAP-like structure
-        self.FBex_lookup = {}
+        FBex_lookup = {}
 
         for d in exp:
             FBex_lookup[d['fbex']] = {}
@@ -356,11 +366,13 @@ class expression_writer(FB2Neo):
                                  'label': d['cvt'],
                                  'rank1': d['ec_rank']})
 
+        self.FBex_lookup = FBex_lookup
+
     def write_expression(self, pub, expression_pattern, FBex):
 
 
         # Phase 1 Generate intermediate (stage restricted) anatomy nodes
-        # Phase 2 
+        # Phase 2
 
 
 
