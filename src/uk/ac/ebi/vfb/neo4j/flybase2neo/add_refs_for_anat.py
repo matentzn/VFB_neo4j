@@ -1,4 +1,4 @@
-from ..neo4j_tools import neo4j_connect, results_2_dict_list
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect, results_2_dict_list
 import sys
 import json
 import re
@@ -57,45 +57,57 @@ supported_xrefs = {'FlyBase': 'FlyBase:FBrf\d{7}',
 #     return out
 
 
+def clean_pub_id_typ(sfid, pub_id_typ):
+    pub_id_typ = str(pub_id_typ).replace('.','_') # replace invalid dots from DB types such as 'answers.com'
+    pub_id_typ = pub_id_typ.replace(' ','_') # replace invalid spaces
+    if '[' in pub_id_typ:
+        print("\n\nNote: Invalid database %s referenced by %s\n\n" % (pub_id_typ, sfid)) 
+        pub_id_typ = pub_id_typ.replace('[','') # remove random '['
+    return pub_id_typ
+  
 def roll_cypher_add_def_pub_link(sfid, pub_id_typ, pub_id):
     """Generates a Cypher statement that links an existing class
     to a pub node with the specified attribute.  Generates a new pub node
      if none exists."""
-    return "MATCH (a:Class { short_form : '%s' }) " \
-           "MERGE (p:pub:Individual { %s : '%s' }) " \
-           "MERGE (a)-[:has_reference { typ : 'def' }]->(p)" % (sfid, pub_id_typ, pub_id)
+    return "MATCH (a:Class { short_form : \"%s\" }) " \
+           "MERGE (p:pub:Individual { %s : \"%s\" }) " \
+           "MERGE (a)-[:has_reference { typ : \"def\" }]->(p)" % (sfid, clean_pub_id_typ(sfid, pub_id_typ), pub_id)
 
 
 def roll_cypher_add_syn_pub_link(sfid, s, pub_id_typ, pub_id):
     """Generates a Cypher statement that links an existing class
     to a pub node ..."""
     label = re.sub("'", "\'", s['name'])
-    return  "MATCH (a:Class { short_form : '%s' }) " \
-            "MERGE (p:pub:Individual { %s : '%s' }) " \
-            "MERGE (a)-[:has_reference { typ : 'syn', scope: '%s', synonym : \"%s\", cat: '%s' }]->(p)" \
-            "" % (sfid, pub_id_typ, pub_id, s['scope'], label, s['type'])
+    return  "MATCH (a:Class { short_form : \"%s\" }) " \
+            "MERGE (p:pub:Individual { %s : \"%s\" }) " \
+            "MERGE (a)-[:has_reference { typ : \"syn\", scope: \"%s\", synonym : \"%s\", cat: \"%s\" }]->(p)" \
+            "" % (sfid, clean_pub_id_typ(sfid, pub_id_typ), pub_id, s['scope'], label, s['type'])
 
 
 nc.commit_list(["MERGE (:pub:Individual { FlyBase: 'Unattributed' })"])
-q = nc.commit_list(["MATCH (c:Class|Individual) return short_form, c.obo_synonym as syns, c.obo_definition_citation as def"])
+q = nc.commit_list(["MATCH (c) where c:Class or c:Individual return c.short_form as short_form, c.obo_synonym as syns, c.obo_definition_citation as def"])
 dc = results_2_dict_list(q)
 statements = []
 for d in dc:
     if d['def']:
-        def_cit = json.loads(d['def'])
-        statements.append(roll_cypher_add_def_pub_link(
-            sfid = d['short_form'],
-            pub_id = d['id'],
-            pub_id_typ = 'def',
-            ))
+        for cit in d['def']:
+          if cit:
+            def_cit = json.loads(cit)
+            for ref in def_cit['oboXrefs']:
+              if ref['id']:
+                statements.append(roll_cypher_add_def_pub_link(
+                    sfid = d['short_form'],
+                    pub_id = ref['id'],
+                    pub_id_typ = ref['database'],
+                    ))
     elif d['syns']:
         for syn in d['syns']:
             s = json.loads(syn)
-            statements.append(
-                roll_cypher_add_syn_pub_link(
+            for ref in s['xrefs']:
+                statements.append(roll_cypher_add_syn_pub_link(
                     sfid = d['short_form'],
-                    pub_id = d['id'],
-                    pub_id_typ = ['database'],
+                    pub_id = ref['id'],
+                    pub_id_typ = ref['database'],
                     s=s))
 
 nc.commit_list_in_chunks(statements, verbose=True, chunk_length=2000)
@@ -110,7 +122,7 @@ nc.commit_list_in_chunks(statements, verbose=True, chunk_length=2000)
 
 
 # tests
-obo_synonym_string = '[{"name":"IDFP","scope":"hasBroadSynonym","type":null,"xrefs":[{"database":"FlyBase","id":"FBrf0212704","description":null,"url":null}]},{"name":"vmpr","scope":"hasRelatedSynonym","type":null,"xrefs":[{"database":"FlyBase","id":"FBrf0193607","description":null,"url":null}]},{"name":"LAL","scope":"hasExactSynonym","type":"BrainName official abbreviation","xrefs":[{"database":"FlyBase","id":"FBrf0224194","description":null,"url":null}]}]'
-obo_synonym = json.loads(obo_synonym)
-obo_definition_citation_string = '{"definition":"A sense organ embedded in the integument and consisting of one or a cluster of sensory neurons and associated sensory structures, support cells and glial cells forming a single organized unit with a largely bona fide boundary.","oboXrefs":[{"database":"FlyBase","id":"FBrf0111704","description":null,"url":null}]}'
-obo_definition_citation = json.load(obo_definition_citation_string)
+# obo_synonym_string = '[{"name":"IDFP","scope":"hasBroadSynonym","type":null,"xrefs":[{"database":"FlyBase","id":"FBrf0212704","description":null,"url":null}]},{"name":"vmpr","scope":"hasRelatedSynonym","type":null,"xrefs":[{"database":"FlyBase","id":"FBrf0193607","description":null,"url":null}]},{"name":"LAL","scope":"hasExactSynonym","type":"BrainName official abbreviation","xrefs":[{"database":"FlyBase","id":"FBrf0224194","description":null,"url":null}]}]'
+# obo_synonym = json.loads(obo_synonym_string)
+# obo_definition_citation_string = '{"definition":"A sense organ embedded in the integument and consisting of one or a cluster of sensory neurons and associated sensory structures, support cells and glial cells forming a single organized unit with a largely bona fide boundary.","oboXrefs":[{"database":"FlyBase","id":"FBrf0111704","description":null,"url":null}]}'
+# obo_definition_citation = json.load(obo_definition_citation_string)

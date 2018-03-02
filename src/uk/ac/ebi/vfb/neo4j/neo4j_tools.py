@@ -119,7 +119,14 @@ class neo4j_connect():
                 chunk_results.append(r)
             i += 1
         return chunk_results
-        
+
+    def commit_csv(self, url, statement, chunk_size=1000, sep=","):
+        # May need some configuration to work with file://...
+        cypher = "USING PERIODIC COMMIT %d " \
+                 "LOAD CSV WITH HEADERS FROM '%s' AS line FIELDTERMINATOR '%s' " \
+                 "%s" % (chunk_size, url, sep, statement)
+        self.commit_list([cypher])
+
     def rest_return_check(self, response):
         """Checks status response to post. Prints warnings to STDERR if not OK.
         If OK, checks for errors in response. Prints any present as warnings to STDERR.
@@ -290,8 +297,8 @@ class neo4jContentMover:
     def move_node_labels(self, match, node_key, chunk_length=2000, verbose=True):
         """match = any match statement in which a node to move is specified with variable n.
 
-        Look up labels for all nodes found by specified match to both from and to.
-        For any case where a matched node (defined by node_key) has labels in to but not from,
+        Look up labels for all nodes found by specified match in both From and To.
+        For any case where a matched node (defined by node_key + shared labels) has labels in From but not To,
         move those labels."""
 
         ret = " return labels(n) as labs, n.%s" % node_key
@@ -312,11 +319,15 @@ class neo4jContentMover:
 
         for k, from_labels in From_label_lookup.items():
             if k in TO_label_lookup.keys():
-                diff = from_labels - TO_label_lookup[k] # find labels that are on this node in From, not to
-                if diff:
-                    lab_string = ':'+':'.join(diff)
-                    statements.add("MATCH (n) WHERE n.%s = '%s'"
-                                   " SET n%s  " % (node_key, k, lab_string))
+                From_only = from_labels - TO_label_lookup[k] # find labels that are on this node in From, not to
+                both = from_labels & TO_label_lookup[k] # Find labels that are on both nodes to use in Match
+                if From_only:
+                    match_lab_string = ''
+                    from_only_lab_string = ':'+':'.join(From_only)
+                    if both:
+                        match_lab_string = ':'+':'.join(both)
+                    statements.add("MATCH (n%s) WHERE n.%s = '%s'"
+                                   " SET n%s  " % (match_lab_string, node_key, k, from_only_lab_string))
 
 
         self.To.commit_list_in_chunks(statements=list(statements),

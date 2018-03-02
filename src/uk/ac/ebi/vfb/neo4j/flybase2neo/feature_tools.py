@@ -1,56 +1,18 @@
-#!/usr/bin/env python3
-import psycopg2
-from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect, chunks
-#from ..vfb_neo_tools import VFBCypherGen
-import re
-import pandas as pd
-
-'''
-Created on 4 Feb 2016
-
-General classes
-
-@author: davidos
-'''
-
-### Sketch of usage:
-# 1. query for expressed gene products
-# generate feature, relation gp -> FBti/FBtp -> Allele (typed) -> gene
-# Query genotype table -> generate genotypes and
-
-
+from .fb_tools import FB2Neo
 
 def clean_sgml_tags(sgml_string):
     sgml_string = re.sub('<up>', '[', sgml_string)
-    sgml_string = re.sub('<\\\up>', ']', sgml_string)
-    sgml_string = re.sub('<\\\up>', '[[', sgml_string)
-    sgml_string = re.sub("<\\\down>", ']]', sgml_string)
+    sgml_string = re.sub('</up>', ']', sgml_string)
+    sgml_string = re.sub('<down>', '[[', sgml_string)
+    sgml_string = re.sub("</down>", ']]', sgml_string)
     return sgml_string
 
-def dict_cursor(cursor):
-    """Takes cursor as an input, following execution of a query, returns results as a list of dicts"""
-    # iterate over rows in cursor.description, pulling first element
-    description = [x[0] for x in cursor.description] 
-    l = []
-    for row in cursor: # iterate over rows in cursor
-        d = dict(zip(description, row))
-#    yield dict(zip(description, row))  # This yields an iterator.  Doesn't actually run until needed.
-        l.append(d)
-    return l
-
-
-def get_fb_conn():
-    return psycopg2.connect(dbname='flybase',
-                            host='chado.flybase.org',
-                            user='flybase')
-
-
-def map_feature_type(self, fbid, ftype):
+def map_feature_type(fbid, ftype):
     mapping = {'transgenic_transposon': 'SO_0000796',
                'insertion_site': 'SO_0001218',
                 'transposable_element_insertion_site': 'SO_0001218',
                 'natural_transposon_isolate_named': 'SO_0000797',
-                'chromosome_structure_variation' : 'SO_1000183'
+                'chromosome_structure_variation': 'SO_1000183'
                 }
     if ftype == 'gene':
         if re.match('FBal', fbid):
@@ -62,75 +24,36 @@ def map_feature_type(self, fbid, ftype):
     else:
         return 'SO_0000110' # Sequence feature
 
-class FB2Neo(object):
-    """A general class for moving content between FB and Neo.
-    Includes connections to FB and neo4J and a generic method for running queries
-    SubClass this for specific transfer jobs."""
-    
-    def __init__(self, endpoint, usr, pwd, file_path=''):
-        """Specify Neo4J server endpoint, username and password"""
-        self._init(endpoint, usr, pwd)
-        self.file_path = file_path  # A path for temp csv files
-        self.fb_base_URI = 'http://www.flybase.org/reports/'
-
-    
-    def _init(self, endpoint, usr, pwd):
-        self.conn = get_fb_conn()
-        self.nc = neo4j_connect(endpoint, usr, pwd)
-        self.fb_base_URI = 'http://www.flybase.org/reports/'
-        
-    def query_fb(self, query):
-        """Runs a query of public Flybase, 
-        returns results as interable of dicts keyed on columns names"""
-        cursor = self.conn.cursor()  # Investigate using with statement
-        cursor.execute(query)
-        dc = dict_cursor(cursor)
-        cursor.close()
-        return dc
-        
-    def commit(self):
-        self.conn.commit()
-
-    def commit_via_csv(self, statement, dict_list):
-        df = pd.DataFrame.from_records(dict_list)
-        df.to_csv(self.file_path + "tmp.csv", sep='\t')
-        self.nc.commit_csv("file:///" + "tmp.csv",
-                           statement=statement,
-                           sep="\t")
-        # add something to delete csv here.
-
-
-        
-    def close(self):
-        self.close()  # Investigate implementing using with statement.  Then method not required.
 
 class FeatureMover(FB2Neo):
 
-
     def name_synonym_lookup(self, fbids):
         """Makes unicode name primary.  Makes everything else a synonym"""
-        #stypes: symbol nickname synonym fullname
+        # stypes: symbol nickname synonym fullname
         query = "SELECT f.uniquename as fbid, s.name as ascii_name, " \
-                     "stype.name AS stype, " \
-                     "fs.is_current, s.synonym_sgml as unicode_name " \
-                     "FROM feature f " \
-                     "JOIN feature_synonym fs on (f.feature_id=fs.feature_id) " \
-                     "JOIN synonym s on (fs.synonym_id=s.synonym_id) " \
-                     "JOIN cvterm stype on (s.type_id=stype.cvterm_id) " \
-                     "WHERE f.uniquename IN ('%s')"
+                "stype.name AS stype, " \
+                "fs.is_current, s.synonym_sgml as unicode_name " \
+                "FROM feature f " \
+                "JOIN feature_synonym fs on (f.feature_id=fs.feature_id) " \
+                "JOIN synonym s on (fs.synonym_id=s.synonym_id) " \
+                "JOIN cvterm stype on (s.type_id=stype.cvterm_id) " \
+                "WHERE f.uniquename IN ('%s')"
         dc = self.query_fb(query % "','".join(fbids))
-        results = {}
+        results = []
         old_key = ''
+        out = {}
         for d in dc:
             key = d['fbid']
             if not (key == old_key):
-                results[d['fbid']] = {}
-                results[d['fbid']]['synonyms'] = []
+                if out: results.append(out)
+                out = {}
+                out['fbid'] = d['fbid']
+                out['synonyms'] = set()
             if d['stype'] == 'symbol' and d['is_current']:
-                results[d['fbid']]['label'] = d['unicode_name']
+                out['label'] = clean_sgml_tags(d['unicode_name'])
             else:
-                results[d['fbid']]['synonyms'].append(clean_sgml_tags(d['ascii_name']))
-                results[d['fbid']]['synonyms'].append(d['unicode_name'])
+                out['synonyms'].add(clean_sgml_tags(d['ascii_name']))
+                out['synonyms'].add(clean_sgml_tags(d['unicode_name']))
             old_key = key
         return results
 
@@ -138,10 +61,12 @@ class FeatureMover(FB2Neo):
         """Takes a list of fbids, generates a csv and uses this to merge feature nodes,
         adding a unicode label and a list of synonyms"""
         names = self.name_synonym_lookup(fbids)
-        nl = [{ 'fbid': k , 'synonyms' : v['synonyms'].join('|'), 'label' : v['label']} for k,v in names.items()]
+        proc_names = [{'fbid': r['fbid'], 'label': r['label'],
+                       'synonyms': '|'.join(r['synonyms'])}
+                      for r in names]  # bit ugly...
         statement = "MERGE (n:Feature { short_form : line.fbid } ) " \
-                    "SET n.label = line.label , n.synonyms = split(line.synonyms, '|')" # Need to set iri
-        self.commit_via_csv(statement, nl)
+                    "SET n.label = line.label , n.synonyms = split(line.synonyms, '|')"  # Need to set iri
+        self.commit_via_csv(statement, proc_names)
 
     # Typing
 
@@ -149,7 +74,7 @@ class FeatureMover(FB2Neo):
         query = "SELECT f.uniquename AS fbid, c.name as ftype " \
                 "FROM feature f " \
                 "JOIN cvterm c on f.type_id=c.cvterm_id " \
-                "WHERE f.uniquename in ('%s')" % "','".join(fbids)  
+                "WHERE f.uniquename in ('%s')" % "','".join(fbids)
         dc = self.query_fb(query)
         results = []
         for d in dc:
@@ -158,14 +83,13 @@ class FeatureMover(FB2Neo):
                                              ftype=d['ftype'])))
         return results
 
-    
     def addTypes2Neo(self, fbids, detail='gross'):
         """Classify FlyBase features identified by a list of fbids.
-        Optionally choose detailed classification with detail = 'fine'.  
+        Optionally choose detailed classification with detail = 'fine'.
         (This option is currently experimental)."""
         statements = []
         if detail == 'gross':
-            types = self.grossType(fbids) 
+            types = self.grossType(fbids)
         elif detail == 'fine':
             types = self.fineType(fbids)
         else:
@@ -182,7 +106,7 @@ class FeatureMover(FB2Neo):
         Returns a list of (fbid, type) tuples where type is a SO ID"""
         # Super slow and broken!
         results = []
-        abbs_proc = [] # For tracking processed abbs
+        abbs_proc = []  # For tracking processed abbs
         query = "SELECT f.uniquename AS fbid, db.name AS db," \
                 "dbx.accession AS acc " \
                 "FROM feature f " \
@@ -196,14 +120,15 @@ class FeatureMover(FB2Neo):
                 "JOIN db ON dbx.db_id = db.db_id " \
                 "WHERE gross_type.name = 'chromosome_structure_variation' -- double checks input gross type" \
                 "AND  meta.name = 'wt_class'" \
-                "AND f.uniquename in (%s)" % ("'" +"'.'".join(abbs))
+                "AND f.uniquename in (%s)" % ("'" + "'.'".join(abbs))
         dc = self.query_fb(query)
         for d in dc:
             results.append((d['fbid'], d['db'] + '_' + d['acc']))
             abbs_proc.append(d['fbid'])
-        [results.append((a, 'SO_0000110')) for a in abbs if a not in abbs_proc] # Defaulting to generic feature id not abb
+        [results.append((a, 'SO_0000110')) for a in abbs if
+         a not in abbs_proc]  # Defaulting to generic feature id not abb
         return results
-            
+
     def fineType(self, fbids):
         gt = self.grossType()
         abbs_list = []
@@ -217,12 +142,12 @@ class FeatureMover(FB2Neo):
 
     def _get_objs(self, subject_ids, chado_rel, out_rel, o_idp):
         query_template = "SELECT s.uniquename AS subj, o.uniquename AS obj FROM feature s " \
-                        "JOIN feature_relationship fr ON fr.subject_id=s.feature_id "  \
-                        "JOIN cvterm r ON fr.type_id=r.cvterm_id "  \
-                        "JOIN feature o ON fr.object_id=o.feature_id "  \
-                        "WHERE s.uniquename IN ('%s') " \
-                        "AND r.name = '%s' "  \
-                        "AND o.uniquename like '%s'"
+                         "JOIN feature_relationship fr ON fr.subject_id=s.feature_id " \
+                         "JOIN cvterm r ON fr.type_id=r.cvterm_id " \
+                         "JOIN feature o ON fr.object_id=o.feature_id " \
+                         "WHERE s.uniquename IN ('%s') " \
+                         "AND r.name = '%s' " \
+                         "AND o.uniquename like '%s'"
         query = query_template % ("','".join(subject_ids), chado_rel, o_idp + '%')
         dc = self.query_fb(query)
         results = []
@@ -233,25 +158,25 @@ class FeatureMover(FB2Neo):
     def allele2Gene(self, subject_ids):
         """Takes a list of allele IDs, returns a list of triples as python tuples:
          (allele rel gene) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='alleleof', out_rel='alleleof', o_idp='FBgn')
+        return self._get_objs(subject_ids, chado_rel='alleleof', out_rel='is_allele_of', o_idp='FBgn')
 
     # gp - transgene R associated_with Type object by uniquename FBgn
     def gp2Transgene(self, subject_ids):
         """Takes a list of gene product IDs, returns a list of triples as python tuples:
          (gene_product rel transgene) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='', o_idp='FBti|FBtp')
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='fu', o_idp='FBti|FBtp')
 
     # gp - gene associated_with Type object by uniquename FBgn
     def gp2Gene(self, subject_ids):
         """Takes a list of gene product IDs, returns a list of triples as python tuples:
          (gene_product rel gene) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='', o_idp='FBgn')
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='expressed_by', o_idp='FBgn')
 
     # transgene - allele  R associated_with Type object by uniquename FBal
     def transgene2allele(self, subject_ids):
         """Takes a list of transgene IDs, returns a list of triples as python tuples:
          (transgene rel allele) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='', o_idp='FBal')
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='fu', o_idp='FBal')
 
     def add_feature_relations(self, triples, assume_subject=True):
         if not assume_subject:
@@ -261,13 +186,13 @@ class FeatureMover(FB2Neo):
         objects = [t[2] for t in triples]
         self.add_features(objects)
         self.addTypes2Neo(objects)
-        statement = "MATCH (s:Feature { short_form: line.subject}, (o:Feature { short_form: line.object}) " \
-                    "MERGE (s)-[r:line.relation]->(o)"
-        triple_dicts = [{'subject': t[0], 'relation': t[1], 'object': t[2]} for t in triples]
-        self.commit_via_csv(statement, triple_dicts)
+        statements = []
+        for t in triples:
+            statements.append(
+                "MATCH (s:Feature { short_form: '%s'}), (o:Feature { short_form: '%s'}) " \
+                "MERGE (s)-[r:%s]->(o)" % (t[0], t[2], t[1])
+            )
+        self.nc.commit_list_in_chunks(statements)
 
-            
-
-
-    
-
+    def generate_expression_pattern(self):
+        return
