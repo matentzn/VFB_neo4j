@@ -63,7 +63,7 @@ nc = neo4j_connect(base_uri = args.endpoint,
 #     nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 10000)
     
 
-def make_name_edges(typ, delete_old=False, test_mode = False):
+def make_name_edges(typ, delete_old=True, test_mode = False):
     if test_mode:
         test = " limit 10"
     else:
