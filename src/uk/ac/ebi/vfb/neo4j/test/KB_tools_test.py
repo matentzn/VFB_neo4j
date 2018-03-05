@@ -74,10 +74,8 @@ class TestEdgeWriter(unittest.TestCase):
 
         
         # Add test of added content?
-        
-        
-    def test_add_anon_type_ax(self):
-        pass
+
+
     
     def test_add_named_type_ax(self):
         self.edge_writer.add_named_type_ax(s = 'Aya', o = 'Person')
@@ -149,7 +147,7 @@ class TestIriGenerator(unittest.TestCase):
 class TestKBPatternWriter(unittest.TestCase):
 
     def setUp(self):
-        nc = neo4j_connect(
+        self.nc = neo4j_connect(
             'http://localhost:7474', 'neo4j', 'neo4j')
         self.kpw = KB_pattern_writer(
             'http://localhost:7474', 'neo4j', 'neo4j')
@@ -164,30 +162,36 @@ class TestKBPatternWriter(unittest.TestCase):
             statements.append("MERGE (p:Class { iri : '%s', label: '%s', short_form : '%s' }) " %
                               (v, k, short_form))
 
-        nc.commit_list(statements)
+        self.nc.commit_list(statements)
         statements = []
 
-        statements.append("MERGE (p:Class { iri : 'http://fubar/lobulobus', label: 'lobulobus' })")
+        statements.append("MERGE (p:Class { short_form: 'lobulobus', label: 'lobulobus' })")
 
-        statements.append("MERGE (p:Individual:Template { iri : 'http://fubar/template_of_dave', label: 'template_of_dave' })")
+        statements.append("MERGE (p:Individual:Template { short_form: 'template_of_dave', label: 'template_of_dave' })")
 
         statements.append("MERGE (s:Site:Individual { short_form : 'fu' }) ")
 
         statements.append("MERGE (ds:DataSet:Individual { short_form : 'dosumis2020' }) ")
 
 
-        nc.commit_list(statements)
+        self.nc.commit_list(statements)
 
     def testAddAnatomyImageSet(self):
         self.kpw.add_anatomy_image_set(
             dataset='dosumis2020',
             imaging_type='computer graphic',
             label='lobulobus of Dave',
-            template='http://fubar/template_of_dave',
-            anatomical_type='http://fubar/lobulobus',
+            template='template_of_dave',
+            anatomical_type='lobulobus',
             dbxrefs={'fu': 'bar'},
             start=100
         )
+        self.kpw.commit()
+
+    def tearDown(self):
+        return
+
+
 
 
 

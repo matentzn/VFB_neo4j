@@ -146,13 +146,20 @@ class iri_generator(kb_writer):
         short_form = ID['short_form']
         iri =  self.base + short_form
         self.id_name[short_form] = label
-        return { 'iri': iri, 'short_form': short_form}
+        return { 'iri': iri, 'short_form': short_form }
     
 
 class kb_owl_edge_writer(kb_writer):
     """A class wrapping methods for updating imported entities in the KB.
     Constructor: kb_owl_edge_writer(endpoint, usr, pwd)
     """
+
+    #TODO - refactor for speed:
+
+    # On commit (i.e. in batch)
+    # Run batch lookup for properties first => additional data + check for existence
+    # MATCH only on S & O.
+    # Merge pulls from property data model.
     
     def check_proprties(self):
         ## Not well thought out.  Consider removing.
@@ -174,16 +181,17 @@ class kb_owl_edge_writer(kb_writer):
         if match_on not in ['iri', 'label', 'short_form']:
             raise Exception("Illegal match property '%s'. " \
                             "Allowed match properties are 'iri', 'label', 'short_form'" % match_on)
-        out =  "MATCH (s{stype} {{ {match_on}:'{s}' }} ), (rn:Property {{ {match_on}: '{r}' }}), " \
-          "(o{otype} {{ {match_on}:'{o}' }} ) ".format(**locals())
+        out = "MATCH (s{stype} {{ {match_on}:'{s}' }} ), (rn:Property {{ {match_on}: '{r}' }}), " \
+              "(o{otype} {{ {match_on}:'{o}' }} ) ".format(**locals())
         out += "MERGE (s)-[re%s { %s: '%s'}]-(o) " % (rtype, match_on, r)
         out += self._set_attributes_from_dict('re', edge_annotations)
         out += "SET re.label = rn.label SET re.short_form = rn.short_form "
+        out += "SET re.iri = rn.iri "
         out += "RETURN '%s', '%s', '%s' " % (s,r,o) # returning input for ref in debugging
         # If the match fails, no rows are returned, but s,r,o are column h
         self.statements.append(out)
 
-    def _add_related_edge(self, s, r, o, stype, otype, edge_annotations = {}, match_on = "iri"):
+    def _add_related_edge(self, s, r, o, stype, otype, edge_annotations={}, match_on="iri"):
         # running edge check for each edge addn - safe by slooow.
         rtype = ':Related'
         self._add_triple(s, r, o, rtype, stype, otype, edge_annotations, match_on)
@@ -366,7 +374,7 @@ class node_importer(kb_writer):
             cursor = fbc.cursor()
             
             query = "SELECT f.uniquename, f.name, f.is_obsolete from feature f " \
-            "JOIN cvterm typ on f.type_id = typ.cvterm_id " 
+                    "JOIN cvterm typ on f.type_id = typ.cvterm_id "
             # if load_list:
             load_list_string = "'" + "','".join(load_list) + "'"
             query += "WHERE f.uniquename in (%s) " % load_list_string
@@ -437,6 +445,11 @@ class KB_pattern_writer(object):
             'SB-SEM' : 'http://purl.obolibrary.org/obo/FBbi_00000585'
             }
 
+    def commit(self, ni_chunk_length=5000, ew_chunk_length = 2000, verbose=False):
+
+        self.ni.commit(verbose=verbose, chunk_length=ni_chunk_length)
+        self.ew.commit(verbose=verbose, chunk_length=ew_chunk_length)
+
     def add_anatomy_image_set(self,
                               dataset,
                               imaging_type,
@@ -447,7 +460,9 @@ class KB_pattern_writer(object):
                               index=False,
                               center=(),
                               anatomy_attributes={},
-                              dbxrefs={}
+                              dbxrefs={},
+                              image_filename = '',
+                              match_on = 'short_form'
                               ):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
@@ -459,22 +474,26 @@ class KB_pattern_writer(object):
         anatomy_attribute = {}"""
         ### TODO: Extend to include site and accession for dbxrefs.
         
-        # TBD: Should this really all run on IRIs?
+        # TBD: Should this really all run on IRIs?  No
 
 
         anat_id = self.anat_iri_gen.generate(start)
+
+        anat_id['label'] = label
         channel_id = self.channel_iri_gen.generate(start)
+        channel_id['label']  = label + '_c'
 
         anatomy_attributes['label'] = label
+
+
         self.ni.add_node(labels=['Individual'],
                          IRI=anat_id['iri'],
                          attribute_dict=anatomy_attributes)
-        self.ni.commit()
         #dataset_short_form = self.ni.nc.commit_list(["MATCH (ds:DataSet) WHERE ds.label = %s RETURN ds.short_form" % dataset])
-        self.ew.add_annotation_axiom(s=anat_id['short_form'],
+        self.ew.add_annotation_axiom(s=anat_id[match_on],
                                      r='source',
                                      o=dataset,
-                                     match_on='short_form')
+                                     match_on=match_on)
 
         if dbxrefs:
             for db, acc in dbxrefs.items():
@@ -489,22 +508,29 @@ class KB_pattern_writer(object):
                          IRI=channel_id['iri'],
                          attribute_dict={'label': label + '_c'}
                          )
-        self.ni.commit()
         # Add a query to look up template channel, assuming template anat ind spec
         #q = "MATCH (c:Individual)-[:Related { short_form : 'depicts' }]" \
         #    "->(t:Individual { iri : '%s' }) RETURN c.iri" % template
         #x = results_2_dict_list(self.ni.nc.commit_list([q]))
         #template = x['c.iri']
-        
 
-        self.ew.add_anon_type_ax(s = channel_id['iri'],
+        # Add typing as channel.  This takes no vars so match_on can be fixed.
+        self.ew.add_named_type_ax(s=channel_id['short_form'],
+                                  o='VFBext_0000014',
+                                  match_on='short_form')
+
+        # Imaging modality - currently works on internal lookup in script.  Should probably be dynamic with DB
+        self.ew.add_anon_type_ax(s=channel_id['iri'],
                                  r=self.relation_lookup['is specified output of'],
                                  o=self.class_lookup[imaging_type])
+
         if anatomical_type:
-            self.ew.add_named_type_ax(s=anat_id['short_form'],
+            self.ew.add_named_type_ax(s=anat_id[match_on],
                                       o=anatomical_type,
-                                      match_on='short_form')
-        # Add facts    
+                                      match_on=match_on)
+        # Add facts
+
+        # This takes no vars so match_on can be fixed.
         self.ew.add_fact(s=channel_id['iri'],
                          r=self.relation_lookup['depicts'],
                          o=anat_id['iri'])
@@ -512,6 +538,7 @@ class KB_pattern_writer(object):
         edge_annotations = {}
         if index: edge_annotations['index'] = index
         if center: edge_annotations['center'] = center
+        if image_filename: edge_annotations['filename'] = image_filename
 
         # if template == 'self':
         #    template = channel_iri
@@ -520,8 +547,7 @@ class KB_pattern_writer(object):
                          o=template,
                          edge_annotations=edge_annotations,
                          match_on='short_form')
-        self.ew.commit()
-        return {'channel': channel_id['iri'], 'anatomy': anat_id['iri']}
+        return {'channel': channel_id, 'anatomy': anat_id }
 
     def add_dataSet(self, name, license, pub='',
                     description='', dataset_spec_text='', site=''):
