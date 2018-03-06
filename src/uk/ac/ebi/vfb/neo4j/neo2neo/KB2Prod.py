@@ -73,9 +73,11 @@ ncm.move_edges(match="MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(o:Indiv
 ## move non-OWL content
 ## Requires: IRIs for everything to be moved (as iri)
 non_owl_node_match = "MATCH (n) " \
-        "WHERE not('Class' IN labels(n)) " \
-        "AND not('Individual' IN labels(n)) " \
-        "AND not('Property' IN labels(n))"     
+        "WHERE ('DataSet' IN labels(n)) " \
+        "OR ('License' IN labels(n)) " \
+        "OR ('Person' IN labels(n))" \
+        "OR ('Site' IN labels(n))" \
+        "OR ('pub' IN labels(n))"
            
 ncm.move_nodes(match=non_owl_node_match, key='iri', test_mode=False)
  
