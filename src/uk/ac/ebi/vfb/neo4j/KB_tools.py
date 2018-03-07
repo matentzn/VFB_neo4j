@@ -27,8 +27,10 @@ from ..curie_tools import map_iri
 # TODO: Add lookup for attributes -> Properties.  Ideally this would be with a specific cypher label for APs.
 # May want to follow a prefixed pattern to indicate OWL compatible APs.
 
+def get_sf(iri):
+    """Get a short form from an iri."""
+    return re.split('[#/]', iri)[-1]
 
-    
 
 def gen_id(idp, ID, length, id_name):
     """
@@ -58,19 +60,19 @@ class kb_writer (object):
         self.output = []
         self.properties = set([])
         
-    def _commit(self, verbose = False, chunk_length = 5000):
+    def _commit(self, verbose=False, chunk_length=5000):
         """Commits Cypher statements stored in object.
         Flushes existing statement list.
         Returns REST API output.
         Optionally set verbosity and chunk length for commits."""
         self.output = self.nc.commit_list_in_chunks(
-                                      statements  = self.statements, 
-                                      verbose = verbose, 
-                                      chunk_length = chunk_length)
+                                      statements=self.statements,
+                                      verbose=verbose,
+                                      chunk_length=chunk_length)
         self.statements = []
         return self.output
 
-    def commit(self, verbose = False, chunk_length = 5000):
+    def commit(self, verbose=False, chunk_length=5000):
         return self._commit(verbose, chunk_length)
     
 
@@ -144,13 +146,20 @@ class iri_generator(kb_writer):
         short_form = ID['short_form']
         iri =  self.base + short_form
         self.id_name[short_form] = label
-        return { 'iri': iri, 'short_form': short_form}
+        return { 'iri': iri, 'short_form': short_form }
     
 
 class kb_owl_edge_writer(kb_writer):
     """A class wrapping methods for updating imported entities in the KB.
     Constructor: kb_owl_edge_writer(endpoint, usr, pwd)
     """
+
+    #TODO - refactor for speed:
+
+    # On commit (i.e. in batch)
+    # Run batch lookup for properties first => additional data + check for existence
+    # MATCH only on S & O.
+    # Merge pulls from property data model.
     
     def check_proprties(self):
         ## Not well thought out.  Consider removing.
@@ -172,16 +181,21 @@ class kb_owl_edge_writer(kb_writer):
         if match_on not in ['iri', 'label', 'short_form']:
             raise Exception("Illegal match property '%s'. " \
                             "Allowed match properties are 'iri', 'label', 'short_form'" % match_on)
-        out =  "MATCH (s{stype} {{ {match_on}:'{s}' }} ), (rn:Property {{ {match_on}: '{r}' }}), " \
-          "(o{otype} {{ {match_on}:'{o}' }} ) ".format(**locals())
+        out = "MATCH (s{stype} {{ {match_on}:'{s}' }} ), (rn:Property {{ {match_on}: '{r}' }}), " \
+              "(o{otype} {{ {match_on}:'{o}' }} ) ".format(**locals())
         out += "MERGE (s)-[re%s { %s: '%s'}]-(o) " % (rtype, match_on, r)
         out += self._set_attributes_from_dict('re', edge_annotations)
-        out += "SET re.label = rn.label SET re.short_form = rn.short_form "
+        if not match_on == 'label':
+            out += "SET re.label = rn.label "
+        if not match_on == 'short_form':
+            out += "SET re.short_form = rn.short_form "
+        if not match_on == 'iri':
+            out += "SET re.iri = rn.iri "
         out += "RETURN '%s', '%s', '%s' " % (s,r,o) # returning input for ref in debugging
         # If the match fails, no rows are returned, but s,r,o are column h
         self.statements.append(out)
 
-    def _add_related_edge(self, s, r, o, stype, otype, edge_annotations = {}, match_on = "iri"):
+    def _add_related_edge(self, s, r, o, stype, otype, edge_annotations={}, match_on="iri"):
         # running edge check for each edge addn - safe by slooow.
         rtype = ':Related'
         self._add_triple(s, r, o, rtype, stype, otype, edge_annotations, match_on)
@@ -364,7 +378,7 @@ class node_importer(kb_writer):
             cursor = fbc.cursor()
             
             query = "SELECT f.uniquename, f.name, f.is_obsolete from feature f " \
-            "JOIN cvterm typ on f.type_id = typ.cvterm_id " 
+                    "JOIN cvterm typ on f.type_id = typ.cvterm_id "
             # if load_list:
             load_list_string = "'" + "','".join(load_list) + "'"
             query += "WHERE f.uniquename in (%s) " % load_list_string
@@ -424,7 +438,8 @@ class KB_pattern_writer(object):
             'depicts': 'http://xmlns.com/foaf/0.1/depicts',
             'in register with': 'http://purl.obolibrary.org/obo/RO_0002026',
             'is specified output of': 'http://purl.obolibrary.org/obo/OBI_0000312',
-            'hasDbXref': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref'
+            'hasDbXref': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
+            'has_source': 'http://purl.org/dc/terms/source'
             }
 
         self.class_lookup = {
@@ -434,15 +449,25 @@ class KB_pattern_writer(object):
             'SB-SEM' : 'http://purl.obolibrary.org/obo/FBbi_00000585'
             }
 
-       
+    def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
+
+        self.ni.commit(verbose=verbose, chunk_length=ni_chunk_length)
+        self.ew.commit(verbose=verbose, chunk_length=ew_chunk_length)
+
     def add_anatomy_image_set(self,
+                              dataset,
                               imaging_type,
                               label,
                               start,
                               template,
-                              anatomical_type = '',
-                              anatomy_attributes =  {},
-                              dbxrefs = {}):
+                              anatomical_type='',
+                              index=False,
+                              center=(),
+                              anatomy_attributes={},
+                              dbxrefs={},
+                              image_filename = '',
+                              match_on = 'short_form'
+                              ):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
         label: Name of anatomical individual
@@ -453,55 +478,108 @@ class KB_pattern_writer(object):
         anatomy_attribute = {}"""
         ### TODO: Extend to include site and accession for dbxrefs.
         
-        # TBD: Should this really all run on IRIs?
-        
-        ### IRI gen is an issue because node_importer assumes a single
-        #### ID scheme, but we need different schemes for anatomy and 
-        #### channel
+        # TBD: Should this really all run on IRIs?  No
+
+
         anat_id = self.anat_iri_gen.generate(start)
-        anat_iri = anat_id['iri']
-        anat_short_form = anat_id['short_form']
-        channel_iri = self.channel_iri_gen.generate(start)['iri']        
+
+        anat_id['label'] = label
+        channel_id = self.channel_iri_gen.generate(start)
+        channel_id['label']  = label + '_c'
+
         anatomy_attributes['label'] = label
+
+
         self.ni.add_node(labels=['Individual'],
-                         IRI=anat_iri,
+                         IRI=anat_id['iri'],
                          attribute_dict=anatomy_attributes)
-        self.ni.commit()
+        #dataset_short_form = self.ni.nc.commit_list(["MATCH (ds:DataSet) WHERE ds.label = %s RETURN ds.short_form" % dataset])
+        self.ew.add_annotation_axiom(s=anat_id[match_on],
+                                     r='source',
+                                     o=dataset,
+                                     match_on=match_on)
+
         if dbxrefs:
             for db, acc in dbxrefs.items():
-                self.ew.add_annotation_axiom(s=anat_short_form,
+                self.ew.add_annotation_axiom(s=anat_id['short_form'],
                                              r='hasDbXref',
                                              o=db,
-                                             match_on = 'short_form',
-                                             edge_annotations = { 'accession' : acc }
+                                             match_on='short_form',
+                                             edge_annotations={'accession': acc}
                                              )
 
         self.ni.add_node(labels=['Individual'],
-                         IRI=channel_iri,
+                         IRI=channel_id['iri'],
                          attribute_dict={'label': label + '_c'}
                          )
-        self.ni.commit()
         # Add a query to look up template channel, assuming template anat ind spec
         #q = "MATCH (c:Individual)-[:Related { short_form : 'depicts' }]" \
         #    "->(t:Individual { iri : '%s' }) RETURN c.iri" % template
         #x = results_2_dict_list(self.ni.nc.commit_list([q]))
         #template = x['c.iri']
-        
 
-        self.ew.add_anon_type_ax(s = channel_iri, 
+        # Add typing as channel.  This takes no vars so match_on can be fixed.
+        self.ew.add_named_type_ax(s=channel_id['short_form'],
+                                  o='VFBext_0000014',
+                                  match_on='short_form')
+
+        # Imaging modality - currently works on internal lookup in script.  Should probably be dynamic with DB
+        self.ew.add_anon_type_ax(s=channel_id['iri'],
                                  r=self.relation_lookup['is specified output of'],
                                  o=self.class_lookup[imaging_type])
-        if anatomical_type:
-            self.ew.add_named_type_ax(s = anat_iri, o = anatomical_type)
-        # Add facts    
-        self.ew.add_fact(s=channel_iri, r=self.relation_lookup['depicts'], o=anat_iri)
-        self.ew.add_fact(s=channel_iri, r=self.relation_lookup['in register with'], o=template)
-        self.ew.commit()
-        return {'channel': channel_iri, 'anatomy': anat_iri}
 
-    def add_dataSet(self):
-        #Stub
-        return
+        if anatomical_type:
+            self.ew.add_named_type_ax(s=anat_id[match_on],
+                                      o=anatomical_type,
+                                      match_on=match_on)
+        # Add facts
+
+        # This takes no vars so match_on can be fixed.
+        self.ew.add_fact(s=channel_id['iri'],
+                         r=self.relation_lookup['depicts'],
+                         o=anat_id['iri'])
+
+        edge_annotations = {}
+        if index: edge_annotations['index'] = index
+        if center: edge_annotations['center'] = center
+        if image_filename: edge_annotations['filename'] = image_filename
+
+        # if template == 'self':
+        #    template = channel_iri
+        self.ew.add_fact(s=channel_id['short_form'],
+                         r=get_sf(self.relation_lookup['in register with']),
+                         o=template,
+                         edge_annotations=edge_annotations,
+                         match_on='short_form')
+        return {'channel': channel_id, 'anatomy': anat_id }
+
+    def add_dataSet(self, name, license, pub='',
+                    description='', dataset_spec_text='', site=''):
+
+        self.ni.add_node(labels=['Individual', 'DataSet'],
+                         IRI=map_iri('data') + name,
+                         attribute_dict={
+                             'label': name,
+                             'short_form': name,
+                             'description': description,
+                             'dataset_spec_text': dataset_spec_text})
+        self.ni.commit()
+        self.ew.add_annotation_axiom(s=name,
+                                     r='license',
+                                     o=license,
+                                     match_on='short_form')
+        if site:
+            self.ew.add_annotation_axiom(s=name,
+                                         r='hasDbXref',
+                                         o=site,
+                                         match_on='short_form')
+        if pub:
+            self.ew.add_annotation_axiom(s=name,
+                                         r='references',
+                                         o=pub,
+                                         match_on='short_form')
+
+
 
 
 
