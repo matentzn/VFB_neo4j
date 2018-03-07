@@ -60,7 +60,7 @@ class kb_writer (object):
         self.output = []
         self.properties = set([])
         
-    def _commit(self, verbose = False, chunk_length = 5000):
+    def _commit(self, verbose=False, chunk_length=5000):
         """Commits Cypher statements stored in object.
         Flushes existing statement list.
         Returns REST API output.
@@ -72,7 +72,7 @@ class kb_writer (object):
         self.statements = []
         return self.output
 
-    def commit(self, verbose = False, chunk_length = 5000):
+    def commit(self, verbose=False, chunk_length=5000):
         return self._commit(verbose, chunk_length)
     
 
@@ -185,8 +185,12 @@ class kb_owl_edge_writer(kb_writer):
               "(o{otype} {{ {match_on}:'{o}' }} ) ".format(**locals())
         out += "MERGE (s)-[re%s { %s: '%s'}]-(o) " % (rtype, match_on, r)
         out += self._set_attributes_from_dict('re', edge_annotations)
-        out += "SET re.label = rn.label SET re.short_form = rn.short_form "
-        out += "SET re.iri = rn.iri "
+        if not match_on == 'label':
+            out += "SET re.label = rn.label "
+        if not match_on == 'short_form':
+            out += "SET re.short_form = rn.short_form "
+        if not match_on == 'iri':
+            out += "SET re.iri = rn.iri "
         out += "RETURN '%s', '%s', '%s' " % (s,r,o) # returning input for ref in debugging
         # If the match fails, no rows are returned, but s,r,o are column h
         self.statements.append(out)
@@ -445,7 +449,7 @@ class KB_pattern_writer(object):
             'SB-SEM' : 'http://purl.obolibrary.org/obo/FBbi_00000585'
             }
 
-    def commit(self, ni_chunk_length=5000, ew_chunk_length = 2000, verbose=False):
+    def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
 
         self.ni.commit(verbose=verbose, chunk_length=ni_chunk_length)
         self.ew.commit(verbose=verbose, chunk_length=ew_chunk_length)
