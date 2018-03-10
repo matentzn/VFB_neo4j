@@ -22,8 +22,8 @@ General classes
 
 def clean_sgml_tags(sgml_string):
     sgml_string = re.sub('<up>', '[', sgml_string)
-    sgml_string = re.sub('<\\\up>', ']', sgml_string)
-    sgml_string = re.sub('<\\\up>', '[[', sgml_string)
+    sgml_string = re.sub(r'<\\\up>', ']', sgml_string)
+    sgml_string = re.sub(r'<\\\up>', '[[', sgml_string)
     sgml_string = re.sub("<\\\down>", ']]', sgml_string)
     return sgml_string
 
