@@ -5,7 +5,6 @@ import re
 
 """Populate pub data.  Should be run as a final step, once all content added."""
 
-## TODO: Add microrefs - for more compact views (P1)
 ## TODO: Add pub types (P2)
 ## TODO: Add authors (P3)
 ## TODO: Add pub relationships (P3)
