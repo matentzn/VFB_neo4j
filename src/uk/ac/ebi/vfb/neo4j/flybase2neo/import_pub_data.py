@@ -24,16 +24,6 @@ pub_list = [str(x['row'][0]) for x in pub_list_results[0]['data']] # Parsing ret
 c = get_fb_conn()
 cursor=c.cursor()
 
-def gen_micro_ref_from_miniref(miniref):
-    # Use regex to truncate after year, remove brackets.
-    
-    return
-
-def gen_micro_ref_from_db():
-    # Use author list + year.  
-    # if > 2 authors, use et al
-    return
-
 statements = []    
     # Pull basic pub data
 cursor.execute("SELECT pub.title, pub.miniref, pub.pyear, pub.pages, " \
@@ -74,7 +64,9 @@ for d in dict_cursor(cursor):
     if d['db_name'] == 'DOI':
         statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' " \
                   "SET p.DOI = '%s'" % (d['fbrf'],d['acc']))
-            
+# Generate microref from miniref and append as label
+statements.append("MATCH (n:pub) where has(n.miniref) SET n.label=split(n.miniref,',')[0] + ', ' + split(n.miniref,',')[1]")
+        
         
 nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 1)
 c.close()
