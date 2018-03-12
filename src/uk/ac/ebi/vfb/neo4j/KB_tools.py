@@ -183,7 +183,7 @@ class kb_owl_edge_writer(kb_writer):
                             "Allowed match properties are 'iri', 'label', 'short_form'" % match_on)
         out = "MATCH (s{stype} {{ {match_on}:'{s}' }} ), (rn:Property {{ {match_on}: '{r}' }}), " \
               "(o{otype} {{ {match_on}:'{o}' }} ) ".format(**locals())
-        out += "MERGE (s)-[re%s { %s: '%s'}]-(o) " % (rtype, match_on, r)
+        out += "MERGE (s)-[re%s { %s: '%s'}]->(o) " % (rtype, match_on, r)
         out += self._set_attributes_from_dict('re', edge_annotations)
         if not match_on == 'label':
             out += "SET re.label = rn.label "
