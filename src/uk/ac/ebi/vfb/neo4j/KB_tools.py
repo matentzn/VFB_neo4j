@@ -235,11 +235,14 @@ class kb_owl_edge_writer(kb_writer):
     
         
     def add_named_type_ax(self, s,o, match_on = "iri"):
-        self.statements.append(
-                               "MATCH (s:Individual {{ {match_on}: '{s}' }} ), (o:Class {{ {match_on}: '{o}' }} ) " \
-                               "MERGE (s)-[:INSTANCEOF]-(o) " \
-                               "RETURN '{s}', '{o}'".format(**locals()))
-                
+        out = "OPTIONAL MATCH (s:Individual {{ {match_on}:'{s}' }} ) " \
+              "OPTIONAL MATCH (o:Class {{ {match_on}:'{o}' }} ) ".format(**locals())
+        out += "FOREACH (a IN CASE WHEN s IS NOT NULL THEN [s] ELSE [] END | " \
+               "FOREACH (b IN CASE WHEN o IS NOT NULL THEN [o] ELSE [] END | " \
+               "MERGE (a)-[:INSTANCEOF]->(b) "
+        out += ")) RETURN { `%s`: count(s), `%s`: count(o) } as match_count" % (s, o)
+        self.statements.append(out)
+
     def add_anon_subClassOf_ax(self, s,r,o, edge_annotations = {}, match_on = "iri"):
         ### Should probably only support adding individual:individual edges in KB...
         self._add_related_edge(s, r, o, stype = ":Class", otype = ":Class",

@@ -56,7 +56,6 @@ class TestEdgeWriter(unittest.TestCase):
         self.edge_writer.nc.commit_list(s)
         pass
 
-
     def test_add_fact(self):
 
         self.edge_writer.add_fact(s = 'Aya', r = 'http://fu.bar/loves', 
