@@ -70,7 +70,7 @@ class TestEdgeWriter(unittest.TestCase):
         assert self.edge_writer.test_edge_addition() == True  
         self.edge_writer.add_fact(s = 'Aya', r = 'loved', o = 'Freddy', edge_annotations = {} )
         self.edge_writer.commit()
-        assert self.edge_writer.test_edge_addition() == False
+        assert self.edge_writer.test_edge_addition() is False
 
         
         # Add test of added content?
